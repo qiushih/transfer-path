@@ -89,8 +89,18 @@ export function matchesFilter(course: CourseRef, filter: CourseFilter): boolean 
   return true;
 }
 
+/**
+ * Long lists are truncated because some real requirements name dozens of
+ * options — the BCS elective bands cover whole faculties — and spelling every
+ * one out buries the sentence the student is trying to read.
+ */
+function summarise(items: string[], limit = 4): string {
+  if (items.length <= limit) return items.join(" / ");
+  return `${items.slice(0, limit).join(" / ")} and ${items.length - limit} more`;
+}
+
 export function describeFilter(filter: CourseFilter): string {
-  if (filter.anyOf) return filter.anyOf.map(courseKey).join(" / ");
+  if (filter.anyOf) return summarise(filter.anyOf.map(courseKey));
 
   const parts: string[] = [];
   if (filter.minLevel !== undefined && filter.maxLevel !== undefined) {
@@ -100,6 +110,6 @@ export function describeFilter(filter: CourseFilter): string {
   } else if (filter.maxLevel !== undefined) {
     parts.push(`below ${filter.maxLevel} level`);
   }
-  parts.push(filter.subjects ? filter.subjects.join("/") : "any subject");
+  parts.push(filter.subjects ? summarise(filter.subjects) : "any subject");
   return parts.join(" ");
 }

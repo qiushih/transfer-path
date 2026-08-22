@@ -3,7 +3,7 @@ import type { DegreeProgram } from "@/domain/requirements";
 import { cfmInternalTransfer } from "./rules/cfm-internal-transfer";
 import { mathInternalTransfer } from "./rules/math-internal-transfer";
 import { scienceInternalTransfer } from "./rules/science-internal-transfer";
-import { mathCsTemplate } from "./programs/math-cs";
+import { mathCsBcs } from "./programs/math-cs";
 
 /**
  * A transfer target pairs the eligibility rule for getting in with the degree
@@ -17,7 +17,7 @@ export type TransferTarget = {
 };
 
 export const TARGETS: TransferTarget[] = [
-  { rule: mathInternalTransfer, programs: [mathCsTemplate] },
+  { rule: mathInternalTransfer, programs: [mathCsBcs] },
   { rule: scienceInternalTransfer, programs: [] },
   { rule: cfmInternalTransfer, programs: [] },
 ];

@@ -47,6 +47,14 @@ export function findCandidates(
 ): Candidate[] {
   const taken = new Set(profile.attempts.map((a) => courseKey(a.course)));
   const candidates: Candidate[] = [];
+  /**
+   * One course can match several unmet requirements — CS 341 is both a named
+   * requirement and a member of the CS 340-398 band — but taking it once fills
+   * exactly one slot. Without this, the plan lists and schedules the same
+   * course repeatedly. Requirements are visited in program order, so the first
+   * match is the most specific one.
+   */
+  const proposed = new Set<string>();
 
   const describe = (entry: CatalogCourse, forRequirement: string): Candidate => {
     const course = { subject: entry.subject, catalogNumber: entry.catalogNumber };
@@ -71,6 +79,8 @@ export function findCandidates(
     if (requirement.kind === "course") {
       for (const option of requirement.anyOf) {
         if (taken.has(courseKey(option))) continue;
+        if (proposed.has(courseKey(option))) continue;
+        proposed.add(courseKey(option));
         const entry = lookup(catalog, option);
         candidates.push(
           entry
@@ -93,11 +103,15 @@ export function findCandidates(
     const matching = catalog.courses
       .filter((c) => {
         const course = { subject: c.subject, catalogNumber: c.catalogNumber };
-        return matchesFilter(course, requirement.filter) && !taken.has(courseKey(course));
+        const key = courseKey(course);
+        return matchesFilter(course, requirement.filter) && !taken.has(key) && !proposed.has(key);
       })
       .slice(0, perRequirementLimit);
 
-    for (const entry of matching) candidates.push(describe(entry, requirement.label));
+    for (const entry of matching) {
+      proposed.add(courseKey(entry));
+      candidates.push(describe(entry, requirement.label));
+    }
   }
 
   return candidates;
