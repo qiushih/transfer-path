@@ -25,7 +25,7 @@ export type AcademicStanding =
 
 export type TermSeason = "F" | "W" | "S";
 
-/** UW term codes are 4 digits: 1 + (year - 1900) + season digit. 1249 = Fall 2024. */
+/** UW term codes are (year - 1900) followed by a season digit: 1249 = Fall 2024. */
 export type TermCode = string;
 
 export type CourseRef = {

@@ -140,9 +140,33 @@ could not reveal.
 npm test
 ```
 
+## Transcript import
+
+Paste the course table from a Quest transcript, or open a PDF of it, and the parser fills in
+courses, grades, units, and terms.
+
+**The transcript never leaves the browser.** PDF text extraction runs client-side via pdf.js,
+which is dynamically imported so its ~0.43MB stays out of the initial bundle for the majority of
+visitors who paste text instead. A transcript is among the most sensitive documents a student
+holds, and the rest of this app already keeps the profile local, so extraction had to stay local
+too.
+
+Two deliberate choices in the parser:
+
+- **Nothing is imported without confirmation.** Every parsed row is shown in a preview table with
+  its grade, and only rows that parsed cleanly are pre-ticked. A row with any issue — no term
+  heading above it, a missing units column, an out-of-range percentage — is shown but left
+  unticked. A silently mis-read grade is worse than one the student is asked about.
+- **Re-importing updates rather than duplicates.** Attempts are keyed by course *and* term, so
+  importing an updated transcript refreshes existing rows and still keeps a genuine repeat of the
+  same course in a different term.
+
+Scanned or photographed transcripts have no text layer and would need OCR, which is not
+implemented. That case is detected and reported explicitly rather than failing as an empty parse.
+
 ## Not yet built
 
-- Transcript scanning (`transcript scan` in the original spec) — manual entry only for now
+- OCR for transcripts that are photos or flatbed scans rather than text PDFs
 - Real degree requirements; `src/data/programs/math-cs.ts` is an unverified template, and Science
   and CFM have no transcribed programs at all
 - Transfer rules for Engineering, Arts, Environment, and Health

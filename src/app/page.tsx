@@ -11,6 +11,7 @@ import { AuditPanel } from "@/components/AuditPanel";
 import { EligibilityPanel } from "@/components/EligibilityPanel";
 import { PlannerPanel } from "@/components/PlannerPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
+import { TranscriptImport } from "@/components/TranscriptImport";
 import { Section, inputClass } from "@/components/ui";
 import { EMPTY_PROFILE, clearProfile, loadProfile, mountedStore, saveProfile } from "@/lib/storage";
 
@@ -51,6 +52,8 @@ function Planner() {
 
   return (
     <Shell>
+      <TranscriptImport profile={profile} onChange={setProfile} />
+
       <ProfilePanel profile={profile} onChange={setProfile} />
 
       <Section title="Transfer target" subtitle="Which program are you trying to transfer into?">
