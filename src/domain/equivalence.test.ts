@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { auditDegree } from "./audit";
-import { buildEquivalenceIndex } from "./equivalence";
+import { CURATED_EQUIVALENCES, buildEquivalenceIndex, canSatisfy } from "./equivalence";
 import { courseKey } from "./grades";
 import type { DegreeProgram } from "./requirements";
 import type { AcademicProfile, CourseAttempt } from "./types";
@@ -14,6 +14,9 @@ const CATALOG = [
   { subject: "MATH", catalogNumber: "127", requirements: "Prereq: 4U Calculus" },
   { subject: "ENGL", catalogNumber: "108", requirements: null },
 ];
+
+const MATH_118 = { subject: "MATH", catalogNumber: "118" };
+const MATH_138 = { subject: "MATH", catalogNumber: "138" };
 
 function attempt(subject: string, catalogNumber: string): CourseAttempt {
   return {
@@ -30,37 +33,150 @@ function profileOf(attempts: CourseAttempt[]): AcademicProfile {
 
 const index = buildEquivalenceIndex(CATALOG);
 
-describe("equivalence from mutual antirequisites", () => {
-  it("treats MATH 118 as substitutable for MATH 138", () => {
-    expect(index.canSubstitute({ subject: "MATH", catalogNumber: "118" }, { subject: "MATH", catalogNumber: "138" })).toBe(true);
-    expect(index.sourceFor({ subject: "MATH", catalogNumber: "118" }, { subject: "MATH", catalogNumber: "138" })).toBe(
-      "mutual-antirequisite",
-    );
+describe("substitution bases", () => {
+  it("lets exact, alternative, and verified satisfy a requirement", () => {
+    expect(canSatisfy("exact")).toBe(true);
+    expect(canSatisfy("alternative")).toBe(true);
+    expect(canSatisfy("verified")).toBe(true);
   });
 
-  it("is symmetric", () => {
-    expect(index.canSubstitute({ subject: "MATH", catalogNumber: "138" }, { subject: "MATH", catalogNumber: "118" })).toBe(true);
+  it("never lets bare antirequisite overlap satisfy a requirement", () => {
+    expect(canSatisfy("overlap")).toBe(false);
+  });
+});
+
+describe("mutual antirequisites are recorded as overlap only", () => {
+  it("classifies MATH 118 against MATH 138 as overlap, not equivalence", () => {
+    expect(index.lookup(MATH_118, MATH_138)?.basis).toBe("overlap");
   });
 
-  it("ignores a one-way antirequisite", () => {
-    // MATH 137 lists MATH 127, but MATH 127 does not list it back, so this is
-    // not evidence of equivalence.
-    expect(index.canSubstitute({ subject: "MATH", catalogNumber: "127" }, { subject: "MATH", catalogNumber: "137" })).toBe(false);
+  it("does not treat that overlap as satisfying", () => {
+    expect(index.satisfies(MATH_118, MATH_138)).toBe(false);
   });
 
-  it("does not make equivalence transitive beyond a direct mutual pair", () => {
-    // 118 ↔ 138 and 118 ↔ 148 both hold, but 148 has no antirequisite entry of
-    // its own, so nothing links it to 138 through 118.
-    expect(index.canSubstitute({ subject: "MATH", catalogNumber: "148" }, { subject: "MATH", catalogNumber: "138" })).toBe(false);
+  it("offers it as a possible substitute to verify", () => {
+    const possible = index.possibleSubstitutesFor(MATH_138);
+    expect(possible.map((s) => courseKey(s.candidate))).toContain("MATH 118");
   });
 
-  it("always lets a course substitute for itself", () => {
-    expect(index.canSubstitute({ subject: "ENGL", catalogNumber: "108" }, { subject: "ENGL", catalogNumber: "108" })).toBe(true);
+  it("is symmetric in both directions", () => {
+    expect(index.lookup(MATH_138, MATH_118)?.basis).toBe("overlap");
   });
 
-  it("lists the equivalents of a course", () => {
-    const found = index.equivalentsOf({ subject: "MATH", catalogNumber: "138" }).map((l) => courseKey(l.course));
-    expect(found).toContain("MATH 118");
+  it("ignores a one-way antirequisite entirely", () => {
+    expect(index.lookup({ subject: "MATH", catalogNumber: "127" }, { subject: "MATH", catalogNumber: "137" })).toBeNull();
+  });
+
+  it("still satisfies a course against itself", () => {
+    expect(index.satisfies(MATH_138, MATH_138)).toBe(true);
+    expect(index.lookup(MATH_138, MATH_138)?.basis).toBe("exact");
+  });
+});
+
+describe("curated equivalences", () => {
+  const curated = [
+    {
+      candidate: MATH_118,
+      target: MATH_138,
+      citation: {
+        url: "https://example.invalid/advisor-confirmation",
+        note: "Math Undergrad Office confirmed MATH 118 is accepted for the MATH 138 requirement",
+        retrieved: "2026-08-22",
+      },
+    },
+  ];
+
+  it("promotes a curated pair to a satisfying substitution", () => {
+    CURATED_EQUIVALENCES.push(...curated);
+    try {
+      const withCurated = buildEquivalenceIndex(CATALOG);
+      expect(withCurated.satisfies(MATH_118, MATH_138)).toBe(true);
+      expect(withCurated.lookup(MATH_118, MATH_138)?.basis).toBe("verified");
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
+  });
+
+  it("preserves the citation so the claim can be traced", () => {
+    CURATED_EQUIVALENCES.push(...curated);
+    try {
+      const found = buildEquivalenceIndex(CATALOG).lookup(MATH_118, MATH_138);
+      expect(found?.citation?.url).toBe("https://example.invalid/advisor-confirmation");
+      expect(found?.citation?.retrieved).toBe("2026-08-22");
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
+  });
+
+  it("is directional unless marked symmetric", () => {
+    CURATED_EQUIVALENCES.push(...curated);
+    try {
+      const withCurated = buildEquivalenceIndex(CATALOG);
+      // MATH 118 may be presented for MATH 138, but not the reverse.
+      expect(withCurated.satisfies(MATH_138, MATH_118)).toBe(false);
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
+  });
+
+  it("stops being a possible substitute once it is verified", () => {
+    CURATED_EQUIVALENCES.push(...curated);
+    try {
+      const possible = buildEquivalenceIndex(CATALOG).possibleSubstitutesFor(MATH_138);
+      expect(possible.map((s) => courseKey(s.candidate))).not.toContain("MATH 118");
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
+  });
+});
+
+describe("scoping a curated equivalence", () => {
+  const scoped = [
+    {
+      candidate: MATH_118,
+      target: MATH_138,
+      citation: { note: "Accepted for this program only" },
+      scope: { programCodes: ["MAT-CS-BCS"], calendarYears: ["2024-2025"] },
+    },
+  ];
+
+  it("applies inside its scope", () => {
+    CURATED_EQUIVALENCES.push(...scoped);
+    try {
+      const withScope = buildEquivalenceIndex(CATALOG);
+      expect(
+        withScope.satisfies(MATH_118, MATH_138, {
+          programCode: "MAT-CS-BCS",
+          calendarYear: "2024-2025",
+        }),
+      ).toBe(true);
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
+  });
+
+  it("does not leak into another program", () => {
+    CURATED_EQUIVALENCES.push(...scoped);
+    try {
+      const withScope = buildEquivalenceIndex(CATALOG);
+      expect(
+        withScope.satisfies(MATH_118, MATH_138, {
+          programCode: "MAT-STAT-BMATH",
+          calendarYear: "2024-2025",
+        }),
+      ).toBe(false);
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
+  });
+
+  it("fails closed when the context does not say which program is being audited", () => {
+    CURATED_EQUIVALENCES.push(...scoped);
+    try {
+      expect(buildEquivalenceIndex(CATALOG).satisfies(MATH_118, MATH_138, {})).toBe(false);
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
   });
 });
 
@@ -76,47 +192,45 @@ const program: DegreeProgram = {
       kind: "course",
       id: "r-math138",
       label: "MATH 138",
-      anyOf: [{ subject: "MATH", catalogNumber: "138" }],
+      anyOf: [MATH_138],
     },
   ],
 };
 
-describe("equivalence inside the degree audit", () => {
-  it("satisfies a MATH 138 requirement with MATH 118", () => {
-    const result = auditDegree(program, profileOf([attempt("MATH", "118")]), index);
-    const requirement = result.requirements[0];
+describe("overlap inside the degree audit", () => {
+  const result = auditDegree(program, profileOf([attempt("MATH", "118")]), index);
 
-    expect(requirement.satisfied).toBe(true);
-    expect(requirement.appliedCourses.map((a) => courseKey(a.course))).toEqual(["MATH 118"]);
-  });
-
-  it("labels the substitution rather than passing it off as an exact match", () => {
-    const result = auditDegree(program, profileOf([attempt("MATH", "118")]), index);
-    expect(result.mapping[0].category).toBe("equivalent");
-    expect(result.mapping[0].appliedTo).toContain("MATH 138");
-  });
-
-  it("still reports an exact match as a direct match", () => {
-    const result = auditDegree(program, profileOf([attempt("MATH", "138")]), index);
-    expect(result.mapping[0].category).toBe("direct");
-  });
-
-  it("leaves the requirement unmet without an equivalence index", () => {
-    const result = auditDegree(program, profileOf([attempt("MATH", "118")]));
+  it("leaves the MATH 138 requirement unmet when only MATH 118 was taken", () => {
     expect(result.requirements[0].satisfied).toBe(false);
+  });
+
+  it("reports MATH 118 as a possible substitute needing verification", () => {
+    const possible = result.requirements[0].possibleSubstitutes;
+    expect(possible.map((p) => courseKey(p.attempt.course))).toEqual(["MATH 118"]);
+    expect(possible[0].substitution.basis).toBe("overlap");
+    expect(courseKey(possible[0].forCourse)).toBe("MATH 138");
+  });
+
+  it("does not award the course a requirement-filling credit category", () => {
+    expect(result.mapping[0].category).not.toBe("exact");
+    expect(result.mapping[0].category).not.toBe("verified-equivalent");
+  });
+
+  it("stops raising the substitute once the requirement is genuinely met", () => {
+    const met = auditDegree(program, profileOf([attempt("MATH", "138")]), index);
+    expect(met.requirements[0].satisfied).toBe(true);
+    expect(met.requirements[0].possibleSubstitutes).toEqual([]);
   });
 });
 
-describe("direct matches are not mislabelled as substitutions", () => {
+describe("credit categories distinguish exact from listed alternative", () => {
   const eitherProgram: DegreeProgram = {
     ...program,
     requirements: [
       {
         kind: "course",
         id: "r-math137",
-        label: "MATH 137",
-        // 137 and 147 are themselves mutual antirequisites, which is what made
-        // an exact 137 look like a substitution for 147.
+        label: "MATH 137 or MATH 147",
         anyOf: [
           { subject: "MATH", catalogNumber: "137" },
           { subject: "MATH", catalogNumber: "147" },
@@ -125,19 +239,13 @@ describe("direct matches are not mislabelled as substitutions", () => {
     ],
   };
 
-  const withPair = buildEquivalenceIndex([
-    ...CATALOG,
-    { subject: "MATH", catalogNumber: "147", requirements: "Antireq: MATH 137" },
-    { subject: "MATH", catalogNumber: "137", requirements: "Antireq: MATH 147" },
-  ]);
-
-  it("calls an exact hit on a listed alternative a direct match", () => {
-    const result = auditDegree(eitherProgram, profileOf([attempt("MATH", "137")]), withPair);
-    expect(result.mapping[0].category).toBe("direct");
+  it("calls the named course an exact match", () => {
+    const result = auditDegree(eitherProgram, profileOf([attempt("MATH", "137")]), index);
+    expect(result.mapping[0].category).toBe("exact");
   });
 
-  it("does not repeat the course name when the label already contains it", () => {
-    const result = auditDegree(program, profileOf([attempt("MATH", "118")]), index);
-    expect(result.mapping[0].appliedTo).toBe("MATH 138");
+  it("calls a listed alternative an accepted alternative", () => {
+    const result = auditDegree(eitherProgram, profileOf([attempt("MATH", "147")]), index);
+    expect(result.mapping[0].category).toBe("alternative");
   });
 });

@@ -100,7 +100,7 @@ function Planner() {
 
       {audit ? (
         <>
-          <AuditPanel audit={audit} equivalence={equivalence} />
+          <AuditPanel audit={audit} />
           <PlannerPanel audit={audit} catalog={catalog} profile={profile} startSeason="F" />
         </>
       ) : (

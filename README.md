@@ -86,15 +86,32 @@ transcript cannot verify — "not enrolled in a 2+2 plan" — are modelled expli
 `manualCheck` and always report `unknown`, so a clean profile reads as "no blockers found" rather
 than a guarantee.
 
-**Course equivalence is inferred from mutual antirequisites.** UW publishes no equivalence table,
-but it publishes antirequisites, and a *mutual* one is strong evidence two courses cover the same
-ground: MATH 138 lists MATH 118 as an antirequisite and MATH 118 lists MATH 138, so MATH 118
-satisfies a MATH 138 requirement. Only mutual edges count — one-way edges outnumber them roughly
-two to one and are mostly missing data on the other side. Equivalence is deliberately **not**
-transitive, since chaining through shared antirequisites would merge whole families of loosely
-related courses. `CURATED_EQUIVALENCES` is the escape hatch for pairs the data misses, and the
-audit reports a substitution as its own credit category rather than passing it off as an exact
-match.
+**Substitution has four levels, and only three of them can satisfy a requirement.** They are
+ranked by what the evidence actually proves:
+
+| Basis | Evidence | Can satisfy? |
+| --- | --- | --- |
+| `exact` | The student took the course the requirement names | Yes |
+| `alternative` | The requirement itself lists the course as acceptable | Yes |
+| `verified` | A curated entry citing an official source or an advisor | Yes |
+| `overlap` | UW lists the two as mutual antirequisites | **No** |
+
+The last line is the important one. An antirequisite says "you may not hold credit for both",
+which is a statement about **duplicate credit, not about program-level substitution**. MATH 118
+and MATH 138 are mutual antirequisites, but a program naming MATH 138 is naming the Honours-stream
+course, and only the department can say whether MATH 118 is accepted for it. So overlap is
+surfaced as *"possible substitute — needs verification"* against the still-unmet requirement,
+never as a pass.
+
+Overlap is derived only from *mutual* edges (one-way edges outnumber them roughly two to one and
+are mostly missing data on the other side) and is deliberately **not** transitive, since chaining
+through shared antirequisites would merge whole families of loosely related courses.
+
+`CURATED_EQUIVALENCES` is the only way to promote a pair to `verified`. Entries are directional
+unless marked `symmetric`, must carry a citation, and may be scoped by program, requirement, and
+calendar year — a swap a department allows for one program is not evidence about another. Scoped
+entries **fail closed**: if the audit cannot say which program it is checking, the scoped
+substitution does not apply.
 
 **Course-to-requirement assignment is a matching problem, not a greedy loop.** If a generic
 "one MATH elective" requirement consumes MATH 137, a specific "MATH 137" requirement is left

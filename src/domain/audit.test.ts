@@ -55,11 +55,11 @@ describe("auditDegree course assignment", () => {
     expect(elective?.appliedCourses[0].course.catalogNumber).toBe("239");
   });
 
-  it("reports a named course as a direct equivalent and a filtered match as a requirement equivalent", () => {
+  it("reports a named course as an exact match and a filtered match as a requirement match", () => {
     const result = auditDegree(program, profileOf([attempt("MATH", "137"), attempt("MATH", "239")]));
 
     const byCourse = new Map(result.mapping.map((m) => [m.attempt.course.catalogNumber, m.category]));
-    expect(byCourse.get("137")).toBe("direct");
+    expect(byCourse.get("137")).toBe("exact");
     expect(byCourse.get("239")).toBe("requirement");
   });
 

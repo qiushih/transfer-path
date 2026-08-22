@@ -1,64 +1,62 @@
 "use client";
 
-import type { AuditResult, CreditCategory } from "@/domain/audit";
-import { EMPTY_EQUIVALENCE, type EquivalenceIndex } from "@/domain/equivalence";
+import type { AuditResult, CreditCategory, PossibleSubstitute } from "@/domain/audit";
 import { courseKey } from "@/domain/grades";
 import { Section, StatusPill, Warning } from "./ui";
 
 const CATEGORY_LABEL: Record<CreditCategory, string> = {
-  direct: "Direct match",
-  equivalent: "Equivalent course accepted",
+  exact: "Exact match",
+  alternative: "Accepted alternative",
+  "verified-equivalent": "Verified equivalent",
   requirement: "Counts toward a requirement",
   elective: "Elective credit",
   unused: "No credit in this program",
 };
 
 const CATEGORY_ORDER: CreditCategory[] = [
-  "direct",
-  "equivalent",
+  "exact",
+  "alternative",
+  "verified-equivalent",
   "requirement",
   "elective",
   "unused",
 ];
 
 /**
- * Lists the courses UW treats as interchangeable with a required one, so a
- * student who took MATH 118 can see it covers a MATH 138 requirement.
+ * Courses the student already has that overlap a required course. These do not
+ * satisfy anything — an antirequisite proves overlapping content, not that the
+ * department accepts the swap — so the wording asks the student to confirm
+ * rather than implying the requirement is handled.
  */
-function AlsoAccepts({
-  requirement,
-  equivalence,
-}: {
-  requirement: { anyOf: { subject: string; catalogNumber: string }[] };
-  equivalence: EquivalenceIndex;
-}) {
-  const named = new Set(requirement.anyOf.map(courseKey));
-  const substitutes = new Map<string, string>();
+function PossibleSubstitutes({ found }: { found: PossibleSubstitute[] }) {
+  if (found.length === 0) return null;
 
-  for (const course of requirement.anyOf) {
-    for (const link of equivalence.equivalentsOf(course)) {
-      const key = courseKey(link.course);
-      if (!named.has(key)) substitutes.set(key, link.source);
-    }
+  // One passed course can overlap several of the accepted courses; say it once.
+  const byCandidate = new Map<string, string[]>();
+  for (const f of found) {
+    const key = courseKey(f.attempt.course);
+    byCandidate.set(key, [...(byCandidate.get(key) ?? []), courseKey(f.forCourse)]);
   }
 
-  if (substitutes.size === 0) return null;
-
   return (
-    <p className="mt-0.5 text-xs opacity-70">
-      Also accepted: <span className="font-mono">{[...substitutes.keys()].join(", ")}</span>
-      <span className="ml-1 opacity-70">(equivalent per UW antirequisites)</span>
+    <p className="mt-1 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs">
+      <span className="font-medium">Possible substitute — needs verification: </span>
+      {[...byCandidate.entries()].map(([candidate, targets], i) => (
+        <span key={candidate}>
+          {i > 0 && "; "}
+          <span className="font-mono">{candidate}</span> overlaps{" "}
+          <span className="font-mono">{targets.join(", ")}</span>
+        </span>
+      ))}
+      <span className="block opacity-80">
+        UW lists these as mutual antirequisites, which shows overlapping content but does not mean
+        the program accepts the substitution. Ask an advisor before relying on it.
+      </span>
     </p>
   );
 }
 
-export function AuditPanel({
-  audit,
-  equivalence = EMPTY_EQUIVALENCE,
-}: {
-  audit: AuditResult;
-  equivalence?: EquivalenceIndex;
-}) {
+export function AuditPanel({ audit }: { audit: AuditResult }) {
   const met = audit.requirements.filter((r) => r.satisfied).length;
 
   return (
@@ -90,9 +88,7 @@ export function AuditPanel({
             {result.remaining && (
               <p className="mt-0.5 text-xs text-red-700 dark:text-red-300">Still needed: {result.remaining}</p>
             )}
-            {!result.satisfied && result.requirement.kind === "course" && (
-              <AlsoAccepts requirement={result.requirement} equivalence={equivalence} />
-            )}
+            <PossibleSubstitutes found={result.possibleSubstitutes} />
           </li>
         ))}
       </ul>

@@ -1,7 +1,12 @@
 import { courseKey, describeFilter, isPassed, matchesFilter, sameCourse } from "./grades";
-import { EMPTY_EQUIVALENCE, type EquivalenceIndex } from "./equivalence";
+import {
+  EMPTY_EQUIVALENCE,
+  type EquivalenceIndex,
+  type Substitution,
+  type SubstitutionContext,
+} from "./equivalence";
 import { flattenRequirements, type DegreeProgram, type Requirement } from "./requirements";
-import type { AcademicProfile, CourseAttempt } from "./types";
+import type { AcademicProfile, CourseAttempt, CourseRef } from "./types";
 
 /**
  * A requirement is expanded into discrete slots so assignment becomes a
@@ -22,6 +27,7 @@ type Slot = {
 function expand(
   requirement: Exclude<Requirement, { kind: "group" }>,
   equivalence: EquivalenceIndex,
+  context: (r: Exclude<Requirement, { kind: "group" }>) => SubstitutionContext,
 ): Slot[] {
   switch (requirement.kind) {
     case "course":
@@ -30,9 +36,11 @@ function expand(
           requirementId: requirement.id,
           index: 0,
           specific: true,
-          // A named requirement also accepts anything UW treats as the same
-          // course, so MATH 118 satisfies a MATH 138 requirement.
-          accepts: (a) => requirement.anyOf.some((c) => equivalence.canSubstitute(a.course, c)),
+          // Exact matches, the requirement's own listed alternatives, and
+          // verified substitutions only. Mere antirequisite overlap does not
+          // fill the slot; it is reported separately as a lead to verify.
+          accepts: (a) =>
+            requirement.anyOf.some((c) => equivalence.satisfies(a.course, c, context(requirement))),
         },
       ];
 
@@ -57,6 +65,30 @@ function expand(
       }));
     }
   }
+}
+
+/**
+ * Passed courses that overlap a required course without being an accepted
+ * substitute. Surfacing these is the point of tracking overlap at all: a
+ * student holding MATH 118 against a MATH 138 requirement should be told to
+ * ask, not told they are done.
+ */
+function findPossibleSubstitutes(
+  requirement: Extract<Requirement, { kind: "course" }>,
+  passed: CourseAttempt[],
+  equivalence: EquivalenceIndex,
+  context: SubstitutionContext,
+): PossibleSubstitute[] {
+  const found: PossibleSubstitute[] = [];
+
+  for (const target of requirement.anyOf) {
+    for (const substitution of equivalence.possibleSubstitutesFor(target, context)) {
+      const attempt = passed.find((a) => sameCourse(a.course, substitution.candidate));
+      if (attempt) found.push({ attempt, forCourse: target, substitution });
+    }
+  }
+
+  return found;
 }
 
 /**
@@ -99,13 +131,28 @@ export type RequirementResult = {
   appliedCourses: CourseAttempt[];
   /** What still has to be taken, phrased for the course planner. */
   remaining: string;
+  /**
+   * Courses the student has already passed that overlap a required course but
+   * are not established as acceptable substitutes. These never satisfy the
+   * requirement; they are leads to take to an advisor.
+   */
+  possibleSubstitutes: PossibleSubstitute[];
+};
+
+export type PossibleSubstitute = {
+  attempt: CourseAttempt;
+  /** The required course this might stand in for. */
+  forCourse: CourseRef;
+  substitution: Substitution;
 };
 
 export type CreditCategory =
-  /** Fills a requirement that names this exact course. */
-  | "direct"
-  /** Stands in for a named course UW treats as equivalent. */
-  | "equivalent"
+  /** The requirement names this exact course. */
+  | "exact"
+  /** The requirement itself lists this course as an accepted alternative. */
+  | "alternative"
+  /** A curated or officially sourced substitution was applied. */
+  | "verified-equivalent"
   /** Counts toward a requirement expressed as a filter. */
   | "requirement"
   /** Applies to the degree's free-elective unit total. */
@@ -136,8 +183,14 @@ export function auditDegree(
   const passed = profile.attempts.filter(isPassed);
   const leaves = flattenRequirements(program.requirements);
 
+  const contextFor = (r: Exclude<Requirement, { kind: "group" }>): SubstitutionContext => ({
+    programCode: program.code,
+    requirementId: r.id,
+    calendarYear: program.calendarYear,
+  });
+
   const slots: Slot[] = [];
-  for (const requirement of leaves) slots.push(...expand(requirement, equivalence));
+  for (const requirement of leaves) slots.push(...expand(requirement, equivalence, contextFor));
 
   const attemptToSlot = maximumMatching(passed, slots);
 
@@ -154,13 +207,19 @@ export function auditDegree(
     const appliedUnits = applied.reduce((sum, a) => sum + a.units, 0);
 
     switch (requirement.kind) {
-      case "course":
+      case "course": {
+        const satisfied = applied.length >= 1;
         return {
           requirement,
-          satisfied: applied.length >= 1,
+          satisfied,
           appliedCourses: applied,
-          remaining: applied.length >= 1 ? "" : requirement.anyOf.map(courseKey).join(" or "),
+          remaining: satisfied ? "" : requirement.anyOf.map(courseKey).join(" or "),
+          // Only worth raising while the requirement is still open.
+          possibleSubstitutes: satisfied
+            ? []
+            : findPossibleSubstitutes(requirement, passed, equivalence, contextFor(requirement)),
         };
+      }
       case "courses": {
         const short = requirement.count - applied.length;
         return {
@@ -168,6 +227,7 @@ export function auditDegree(
           satisfied: short <= 0,
           appliedCourses: applied,
           remaining: short <= 0 ? "" : `${short} more ${describeFilter(requirement.filter)} course(s)`,
+          possibleSubstitutes: [],
         };
       }
       case "units": {
@@ -178,6 +238,7 @@ export function auditDegree(
           appliedCourses: applied,
           remaining:
             short <= 0 ? "" : `${short.toFixed(1)} more units of ${describeFilter(requirement.filter)}`,
+          possibleSubstitutes: [],
         };
       }
     }
@@ -201,29 +262,35 @@ export function auditDegree(
       const requirement = leaves.find((r) => r.id === slot.requirementId);
 
       if (slot.specific && requirement?.kind === "course") {
-        // An exact hit on any listed alternative is a direct match. Checking
-        // equivalence first would mislabel MATH 137 against a "MATH 137 or 147"
-        // requirement as a substitution, because 137 and 147 are equivalent.
-        const exact = requirement.anyOf.some((c) => sameCourse(c, attempt.course));
-        if (!exact) {
-          const stoodInFor = requirement.anyOf.find((c) =>
-            equivalence.canSubstitute(attempt.course, c),
-          );
-          if (stoodInFor) {
-            const label = requirement.label;
-            const named = courseKey(stoodInFor);
-            return {
-              attempt,
-              category: "equivalent",
-              appliedTo: label.includes(named) ? label : `${label} (counts as ${named})`,
-            };
-          }
+        const listed = requirement.anyOf.some((c) => sameCourse(c, attempt.course));
+        if (listed) {
+          // The first entry is the course the requirement is named for; a hit
+          // on any later entry is an alternative the requirement itself allows.
+          const isPrimary = sameCourse(requirement.anyOf[0], attempt.course);
+          return {
+            attempt,
+            category: isPrimary ? "exact" : "alternative",
+            appliedTo: requirement.label,
+          };
+        }
+
+        const stoodInFor = requirement.anyOf.find((c) =>
+          equivalence.satisfies(attempt.course, c, contextFor(requirement)),
+        );
+        if (stoodInFor) {
+          const label = requirement.label;
+          const named = courseKey(stoodInFor);
+          return {
+            attempt,
+            category: "verified-equivalent",
+            appliedTo: label.includes(named) ? label : `${label} (counts as ${named})`,
+          };
         }
       }
 
       return {
         attempt,
-        category: slot.specific ? "direct" : "requirement",
+        category: slot.specific ? "exact" : "requirement",
         appliedTo: requirement?.label,
       };
     }
