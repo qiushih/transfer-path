@@ -1,8 +1,12 @@
 # UW Internal Transfer Planner
 
-Checks whether a University of Waterloo student meets the requirements to transfer between
-programs, shows how completed courses would carry over to the target degree, and plans the
-courses still outstanding.
+Answers one question for a University of Waterloo student: **what am I missing before I can apply
+to transfer or declare my target major, and what is the earliest path to becoming eligible?**
+
+Scope is deliberately narrow. This models the conditions for *applying or declaring only*. What a
+student must do after being admitted — upper-year courses, elective bands, total degree units,
+co-op and PD — is **not** modelled, because those requirements never block an application and
+listing them buries the handful of things that do.
 
 Unofficial. Always confirm results with an academic advisor.
 
@@ -16,8 +20,7 @@ npm install
 npm run dev
 ```
 
-The app runs with a seven-course placeholder catalog. To use real UW course data, register for a
-key at <https://openapi.data.uwaterloo.ca> and sync:
+To refresh the course catalog, register for a key at <https://openapi.data.uwaterloo.ca> and sync:
 
 **A key is mandatory.** Every v3 endpoint sits behind the global `apiKey` security scheme — an
 anonymous request returns `401` with "There does not appear to be an X-API-KEY header", and an
@@ -37,17 +40,19 @@ project has two data layers:
 | --- | --- | --- |
 | Course catalog, prerequisite text, term availability | Synced from the API | `src/data/catalog.json` |
 | Course equivalences | Derived from synced antirequisites | `src/domain/equivalence.ts` |
-| Transfer eligibility rules | Hand-curated from faculty pages | `src/data/rules/` |
-| Degree requirements | Hand-curated from the undergraduate calendar | `src/data/programs/` |
-| Which rules pair with which programs | Hand-curated | `src/data/targets.ts` |
+| Transfer and declaration rules | Hand-curated from faculty pages and the calendar | `src/data/rules/` |
+| Which rules apply to which target | Hand-curated | `src/data/targets.ts` |
 
-Transfer targets currently covered: **Faculty of Mathematics**, **Faculty of Science**, and
-**Computing and Financial Management**. Adding one means writing a rule file and registering it in
-`targets.ts`; a target with no transcribed degree requirements still offers eligibility checking.
+**Reaching a major is often two steps, and showing only one is wrong.** A Science student who
+wants Computer Science must be admitted to the Faculty of Mathematics *and* then meet the CS
+major's declaration requirements, which are stricter than the faculty transfer alone. A target
+therefore carries a `facultyRule` and an optional `declarationRule`, and both must be satisfied.
+
+Targets currently covered: **Computer Science** (Math transfer + CS declaration), **Faculty of
+Mathematics**, **Faculty of Science**, and **Computing and Financial Management**.
 
 Every curated file records the URL it was transcribed from and the date it was retrieved, so a
-stale rule can be re-checked. Degree programs additionally carry `verified: boolean`; the UI shows
-a warning banner until a human has confirmed the requirements against the calendar.
+stale rule can be re-checked.
 
 Two caveats worth knowing about the API:
 
@@ -73,10 +78,11 @@ which is what makes it testable:
 
 - `types.ts` — profile, grades, terms, and the tri-state `Evaluation`
 - `grades.ts` — averages, failure rules, and the `CourseFilter` selector
-- `eligibility.ts` — the transfer rule engine
-- `requirements.ts` / `audit.ts` — degree requirements and the audit
+- `eligibility.ts` — the transfer and declaration rule engine
+- `gaps.ts` — what still blocks an application, and the courses that would close it
 - `prereqs.ts` — parser for UW's free-text prerequisite strings
-- `planner.ts` — candidate courses and term-by-term scheduling
+- `planner.ts` — term-by-term ordering of the courses needed to become eligible
+- `transcript.ts` — parses a Quest transcript into course attempts
 
 Three design decisions carry most of the weight:
 
@@ -110,13 +116,20 @@ through shared antirequisites would merge whole families of loosely related cour
 `CURATED_EQUIVALENCES` is the only way to promote a pair to `verified`. Entries are directional
 unless marked `symmetric`, must carry a citation, and may be scoped by program, requirement, and
 calendar year — a swap a department allows for one program is not evidence about another. Scoped
-entries **fail closed**: if the audit cannot say which program it is checking, the scoped
+entries **fail closed**: if the check cannot say which program it is looking at, the scoped
 substitution does not apply.
 
-**Course-to-requirement assignment is a matching problem, not a greedy loop.** If a generic
-"one MATH elective" requirement consumes MATH 137, a specific "MATH 137" requirement is left
-falsely unmet. `audit.ts` expands requirements into slots and runs maximum bipartite matching,
-which cannot make that mistake. This is covered by a regression test.
+**The plan includes prerequisites, which is what makes it a path rather than a list.** CS 136 is a
+declaration requirement; CS 135 is not, but a student with neither cannot reach CS 136 without it,
+so CS 135 is pulled into the plan and scheduled first. Only *missing* prerequisites are added, and
+a "one of" prerequisite costs one course rather than all of them — flattening the alternatives
+told students to take four intro CS courses where one would do.
+
+**The tool commits to a course only when the rule names one.** A requirement like "3 math courses"
+matches hundreds of catalog entries, and picking three would dress an arbitrary choice up as
+advice; those are shown as a ranked shortlist to confirm with an advisor. Where a rule does name
+courses, the plan picks one and lists the alternatives rather than hiding the choice — the data
+has no reliable way to rank CS 115 against CS 135 against CS 145.
 
 **Unparseable prerequisites are surfaced, not dropped.** UW prerequisites are prose. The parser
 handles boolean structure, the "MATH 137 or 147" subject-elision idiom, and grade gates in both
@@ -164,11 +177,15 @@ Two deliberate choices in the parser:
 Scanned or photographed transcripts have no text layer and would need OCR, which is not
 implemented. That case is detected and reported explicitly rather than failing as an empty parse.
 
+## Deliberately out of scope
+
+Graduation requirements. Upper-year courses, elective bands, total degree units, co-op and PD
+apply only *after* admission and never block an application, so they are not modelled.
+
 ## Not yet built
 
 - OCR for transcripts that are photos or flatbed scans rather than text PDFs
-- Real degree requirements; `src/data/programs/math-cs.ts` is an unverified template, and Science
-  and CFM have no transcribed programs at all
+- Declaration rules for majors other than Computer Science
 - Transfer rules for Engineering, Arts, Environment, and Health
 - Checking enrolment restrictions ("Honours Math students only") against the student's current
   program, which would turn most "check yourself" notes into real answers

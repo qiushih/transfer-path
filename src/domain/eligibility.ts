@@ -7,7 +7,14 @@ import {
   weightedAverage,
   type CourseFilter,
 } from "./grades";
-import type { AcademicProfile, AcademicStanding, Evaluation, EvaluationStatus } from "./types";
+import { EMPTY_EQUIVALENCE, type EquivalenceIndex } from "./equivalence";
+import type {
+  AcademicProfile,
+  AcademicStanding,
+  CourseRef,
+  Evaluation,
+  EvaluationStatus,
+} from "./types";
 
 /**
  * Conditions are data, not code, so a program's transfer rules can be
@@ -41,6 +48,27 @@ function roundPct(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+/**
+ * A course counts if the filter matches it outright, or if a verified
+ * substitution stands in for one of the courses the filter names.
+ *
+ * Equivalence belongs here rather than in a degree audit, because it changes
+ * whether a student is *eligible*: a declaration rule naming CS 136 should
+ * accept a course the department has confirmed as a substitute. Only verified
+ * substitutions count — bare antirequisite overlap is content overlap, not
+ * permission, and admitting it here would tell a student they can apply when
+ * they cannot.
+ */
+function courseCounts(
+  course: CourseRef,
+  filter: CourseFilter,
+  equivalence: EquivalenceIndex,
+): boolean {
+  if (matchesFilter(course, filter)) return true;
+  if (!filter.anyOf) return false;
+  return filter.anyOf.some((named) => equivalence.satisfies(course, named));
+}
+
 /** `unknown` dominates `unmet` only for reporting; a rule with any unmet child fails. */
 function combineAll(children: Evaluation[]): EvaluationStatus {
   if (children.some((c) => c.status === "unmet")) return "unmet";
@@ -54,7 +82,11 @@ function combineAny(children: Evaluation[]): EvaluationStatus {
   return "unmet";
 }
 
-export function evaluateCondition(condition: Condition, profile: AcademicProfile): Evaluation {
+export function evaluateCondition(
+  condition: Condition,
+  profile: AcademicProfile,
+  equivalence: EquivalenceIndex = EMPTY_EQUIVALENCE,
+): Evaluation {
   switch (condition.kind) {
     case "cumulativeAverage": {
       const average = weightedAverage(profile.attempts);
@@ -93,7 +125,7 @@ export function evaluateCondition(condition: Condition, profile: AcademicProfile
     case "completedCourses": {
       const matching = profile.attempts.filter(
         (a) =>
-          matchesFilter(a.course, condition.filter) &&
+          courseCounts(a.course, condition.filter, equivalence) &&
           isCompleted(a) &&
           !isFailure(a.grade) &&
           (condition.minGrade === undefined ||
@@ -159,12 +191,12 @@ export function evaluateCondition(condition: Condition, profile: AcademicProfile
     }
 
     case "all": {
-      const children = condition.of.map((c) => evaluateCondition(c, profile));
+      const children = condition.of.map((c) => evaluateCondition(c, profile, equivalence));
       return { status: combineAll(children), requirement: condition.label, children };
     }
 
     case "any": {
-      const children = condition.of.map((c) => evaluateCondition(c, profile));
+      const children = condition.of.map((c) => evaluateCondition(c, profile, equivalence));
       return { status: combineAny(children), requirement: condition.label, children };
     }
 
@@ -197,8 +229,12 @@ function collectOutstanding(evaluation: Evaluation): Evaluation[] {
   return evaluation.children.flatMap(collectOutstanding);
 }
 
-export function checkEligibility(rule: TransferRule, profile: AcademicProfile): EligibilityReport {
-  const evaluation = evaluateCondition(rule.condition, profile);
+export function checkEligibility(
+  rule: TransferRule,
+  profile: AcademicProfile,
+  equivalence: EquivalenceIndex = EMPTY_EQUIVALENCE,
+): EligibilityReport {
+  const evaluation = evaluateCondition(rule.condition, profile, equivalence);
   const outstanding = collectOutstanding(evaluation);
   return {
     rule,

@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import catalogData from "@/data/catalog.json";
-import { TARGETS, findTarget } from "@/data/targets";
-import { auditDegree } from "@/domain/audit";
+import { TARGETS, findTarget, stagesOf } from "@/data/targets";
+import type { Catalog } from "@/domain/catalog";
+import { checkEligibility } from "@/domain/eligibility";
 import { buildEquivalenceIndex } from "@/domain/equivalence";
-import type { Catalog } from "@/domain/planner";
+import { findGaps, neededCourses, openChoices } from "@/domain/gaps";
+import { planPath } from "@/domain/planner";
 import type { AcademicProfile } from "@/domain/types";
-import { AuditPanel } from "@/components/AuditPanel";
 import { EligibilityPanel } from "@/components/EligibilityPanel";
 import { PlannerPanel } from "@/components/PlannerPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
@@ -15,7 +16,7 @@ import { TranscriptImport } from "@/components/TranscriptImport";
 import { Section, inputClass } from "@/components/ui";
 import { EMPTY_PROFILE, clearProfile, loadProfile, mountedStore, saveProfile } from "@/lib/storage";
 
-const catalog = catalogData as Catalog & { placeholder?: boolean };
+const catalog = catalogData as Catalog;
 
 export default function Home() {
   const mounted = useSyncExternalStore(
@@ -31,8 +32,7 @@ export default function Home() {
 
 function Planner() {
   const [profile, setProfile] = useState<AcademicProfile>(loadProfile);
-  const [targetId, setTargetId] = useState(TARGETS[0].rule.id);
-  const [programCode, setProgramCode] = useState<string>(TARGETS[0].programs[0]?.code ?? "");
+  const [targetId, setTargetId] = useState(TARGETS[0].id);
 
   useEffect(() => {
     saveProfile(profile);
@@ -43,12 +43,13 @@ function Planner() {
   const equivalence = useMemo(() => buildEquivalenceIndex(catalog.courses), []);
 
   const target = findTarget(targetId);
-  const program = target.programs.find((p) => p.code === programCode) ?? target.programs[0];
+  const stages = stagesOf(target);
 
-  // Cheap enough to recompute: the matching runs over a few dozen courses.
-  // React Compiler memoizes it, and a manual useMemo here trips its analysis
-  // because `program` is derived inline.
-  const audit = program ? auditDegree(program, profile, equivalence) : null;
+  const reports = stages.map((rule) => checkEligibility(rule, profile, equivalence));
+  const gaps = findGaps(reports, profile);
+  const needed = neededCourses(gaps, catalog, profile);
+  const choices = openChoices(gaps, catalog, profile);
+  const plan = planPath(needed, profile, "F");
 
   return (
     <Shell>
@@ -56,67 +57,38 @@ function Planner() {
 
       <ProfilePanel profile={profile} onChange={setProfile} />
 
-      <Section title="Transfer target" subtitle="Which program are you trying to transfer into?">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium opacity-80">Faculty or program</span>
-            <select
-              className={inputClass}
-              value={targetId}
-              onChange={(e) => {
-                const next = findTarget(e.target.value);
-                setTargetId(next.rule.id);
-                setProgramCode(next.programs[0]?.code ?? "");
-              }}
-            >
-              {TARGETS.map((t) => (
-                <option key={t.rule.id} value={t.rule.id}>
-                  {t.rule.targetProgram}
-                </option>
-              ))}
-            </select>
-          </label>
+      <Section
+        title="Where do you want to go?"
+        subtitle="Some majors take two steps: getting into the faculty, then declaring the major."
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium opacity-80">Target</span>
+          <select
+            className={inputClass}
+            value={targetId}
+            onChange={(e) => setTargetId(e.target.value)}
+          >
+            {TARGETS.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium opacity-80">Degree program to audit</span>
-            <select
-              className={inputClass}
-              value={program?.code ?? ""}
-              disabled={target.programs.length === 0}
-              onChange={(e) => setProgramCode(e.target.value)}
-            >
-              {target.programs.length === 0 ? (
-                <option value="">No degree requirements transcribed yet</option>
-              ) : (
-                target.programs.map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {p.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
-        </div>
+        {stages.length > 1 && (
+          <p className="mt-2 text-xs opacity-70">
+            This target has {stages.length} stages: {stages.map((s) => s.targetProgram).join(" → ")}.
+            Both must be satisfied.
+          </p>
+        )}
       </Section>
 
-      <EligibilityPanel rule={target.rule} profile={profile} />
+      {reports.map((report) => (
+        <EligibilityPanel key={report.rule.id} report={report} />
+      ))}
 
-      {audit ? (
-        <>
-          <AuditPanel audit={audit} />
-          <PlannerPanel audit={audit} catalog={catalog} profile={profile} startSeason="F" />
-        </>
-      ) : (
-        <Section
-          title="Degree audit"
-          subtitle={`No degree requirements have been transcribed for ${target.rule.targetProgram} yet.`}
-        >
-          <p className="text-sm opacity-70">
-            Eligibility above still applies. Adding a program means transcribing its requirements
-            from the undergraduate calendar into <code className="font-mono">src/data/programs/</code>.
-          </p>
-        </Section>
-      )}
+      <PlannerPanel gaps={gaps} plan={plan} choices={choices} startSeason="F" startYear={new Date().getFullYear()} />
 
       <footer className="flex items-center justify-between border-t border-black/10 pt-4 text-xs opacity-60 dark:border-white/15">
         <span>Unofficial. Always confirm with an academic advisor.</span>
@@ -140,8 +112,8 @@ function Shell({ children }: { children: React.ReactNode }) {
       <header>
         <h1 className="text-2xl font-bold">UW Internal Transfer Planner</h1>
         <p className="mt-1 text-sm opacity-70">
-          Check whether you meet the requirements to transfer between Waterloo programs, see how your
-          completed courses would carry over, and plan what is left.
+          Find out what you still need before you can apply to transfer or declare a major at
+          Waterloo, and the earliest term you could be eligible.
         </p>
       </header>
       {children}

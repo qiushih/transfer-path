@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { auditDegree } from "./audit";
+import { checkEligibility, type TransferRule } from "./eligibility";
 import { CURATED_EQUIVALENCES, buildEquivalenceIndex, canSatisfy } from "./equivalence";
 import { courseKey } from "./grades";
-import type { DegreeProgram } from "./requirements";
 import type { AcademicProfile, CourseAttempt } from "./types";
 
 /** Mirrors the real MATH 118/138 antirequisite pair, plus a one-way case. */
@@ -180,72 +179,51 @@ describe("scoping a curated equivalence", () => {
   });
 });
 
-const program: DegreeProgram = {
-  code: "TEST",
-  name: "Test",
-  faculty: "Mathematics",
-  calendarYear: "2024-2025",
-  source: { url: "https://example.invalid", retrieved: "2026-08-21", verified: false },
-  totalUnits: 1.0,
-  requirements: [
-    {
-      kind: "course",
-      id: "r-math138",
-      label: "MATH 138",
-      anyOf: [MATH_138],
-    },
-  ],
+/**
+ * Equivalence now matters at the eligibility stage rather than in a degree
+ * audit: a declaration rule naming CS 136 should accept a confirmed substitute,
+ * because that changes whether the student can apply at all.
+ */
+const ruleNaming138: TransferRule = {
+  id: "test-rule",
+  targetProgram: "Test program",
+  source: { url: "https://example.invalid", retrieved: "2026-08-22" },
+  condition: {
+    kind: "completedCourses",
+    label: "of MATH 138",
+    min: 1,
+    filter: { anyOf: [MATH_138] },
+  },
 };
 
-describe("overlap inside the degree audit", () => {
-  const result = auditDegree(program, profileOf([attempt("MATH", "118")]), index);
-
-  it("leaves the MATH 138 requirement unmet when only MATH 118 was taken", () => {
-    expect(result.requirements[0].satisfied).toBe(false);
+describe("overlap inside an eligibility rule", () => {
+  it("does not let MATH 118 satisfy a rule naming MATH 138", () => {
+    const report = checkEligibility(ruleNaming138, profileOf([attempt("MATH", "118")]), index);
+    expect(report.overall).toBe("unmet");
   });
 
-  it("reports MATH 118 as a possible substitute needing verification", () => {
-    const possible = result.requirements[0].possibleSubstitutes;
-    expect(possible.map((p) => courseKey(p.attempt.course))).toEqual(["MATH 118"]);
-    expect(possible[0].substitution.basis).toBe("overlap");
-    expect(courseKey(possible[0].forCourse)).toBe("MATH 138");
+  it("accepts the named course itself", () => {
+    const report = checkEligibility(ruleNaming138, profileOf([attempt("MATH", "138")]), index);
+    expect(report.overall).toBe("met");
   });
 
-  it("does not award the course a requirement-filling credit category", () => {
-    expect(result.mapping[0].category).not.toBe("exact");
-    expect(result.mapping[0].category).not.toBe("verified-equivalent");
+  it("accepts a curated substitute once it is verified", () => {
+    CURATED_EQUIVALENCES.push({
+      candidate: MATH_118,
+      target: MATH_138,
+      citation: { note: "Advisor confirmed for this rule" },
+    });
+    try {
+      const withCurated = buildEquivalenceIndex(CATALOG);
+      const report = checkEligibility(ruleNaming138, profileOf([attempt("MATH", "118")]), withCurated);
+      expect(report.overall).toBe("met");
+    } finally {
+      CURATED_EQUIVALENCES.length = 0;
+    }
   });
 
-  it("stops raising the substitute once the requirement is genuinely met", () => {
-    const met = auditDegree(program, profileOf([attempt("MATH", "138")]), index);
-    expect(met.requirements[0].satisfied).toBe(true);
-    expect(met.requirements[0].possibleSubstitutes).toEqual([]);
-  });
-});
-
-describe("credit categories distinguish exact from listed alternative", () => {
-  const eitherProgram: DegreeProgram = {
-    ...program,
-    requirements: [
-      {
-        kind: "course",
-        id: "r-math137",
-        label: "MATH 137 or MATH 147",
-        anyOf: [
-          { subject: "MATH", catalogNumber: "137" },
-          { subject: "MATH", catalogNumber: "147" },
-        ],
-      },
-    ],
-  };
-
-  it("calls the named course an exact match", () => {
-    const result = auditDegree(eitherProgram, profileOf([attempt("MATH", "137")]), index);
-    expect(result.mapping[0].category).toBe("exact");
-  });
-
-  it("calls a listed alternative an accepted alternative", () => {
-    const result = auditDegree(eitherProgram, profileOf([attempt("MATH", "147")]), index);
-    expect(result.mapping[0].category).toBe("alternative");
+  it("ignores equivalence entirely when no index is supplied", () => {
+    const report = checkEligibility(ruleNaming138, profileOf([attempt("MATH", "118")]));
+    expect(report.overall).toBe("unmet");
   });
 });

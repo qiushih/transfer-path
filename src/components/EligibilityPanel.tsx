@@ -1,7 +1,7 @@
 "use client";
 
-import { checkEligibility, type TransferRule } from "@/domain/eligibility";
-import type { AcademicProfile, Evaluation } from "@/domain/types";
+import type { EligibilityReport } from "@/domain/eligibility";
+import type { Evaluation } from "@/domain/types";
 import { Section, StatusPill } from "./ui";
 
 function EvaluationRow({ evaluation }: { evaluation: Evaluation }) {
@@ -26,14 +26,9 @@ function EvaluationRow({ evaluation }: { evaluation: Evaluation }) {
   );
 }
 
-export function EligibilityPanel({
-  rule,
-  profile,
-}: {
-  rule: TransferRule;
-  profile: AcademicProfile;
-}) {
-  const report = checkEligibility(rule, profile);
+/** The report is computed by the page so equivalence is threaded in once. */
+export function EligibilityPanel({ report }: { report: EligibilityReport }) {
+  const rule = report.rule;
 
   const summary =
     report.blockers.length > 0
