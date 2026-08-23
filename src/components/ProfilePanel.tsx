@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { courseKey } from "@/domain/grades";
-import type { AcademicProfile, AcademicStanding, CourseAttempt, TermRecord } from "@/domain/types";
+import {
+  ACADEMIC_LEVELS,
+  type AcademicLevel,
+  type AcademicProfile,
+  type AcademicStanding,
+  type CourseAttempt,
+  type SystemOfStudy,
+  type TermRecord,
+} from "@/domain/types";
 import { Field, Section, inputClass } from "./ui";
 
 const STANDINGS: AcademicStanding[] = [
@@ -96,6 +104,51 @@ export function ProfilePanel({
           </select>
         </Field>
       </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Field label="System of study">
+          <div className="flex gap-2">
+            {(["co-op", "regular"] as SystemOfStudy[]).map((option) => (
+              <button
+                key={option}
+                className={`rounded border px-3 py-1 text-sm ${
+                  profile.systemOfStudy === option
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-black/20 dark:border-white/25"
+                }`}
+                onClick={() => onChange({ ...profile, systemOfStudy: option })}
+              >
+                {option === "co-op" ? "Co-op" : "Regular"}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Term you are in now">
+          <div className="flex flex-wrap gap-1">
+            {ACADEMIC_LEVELS.map((level) => (
+              <button
+                key={level}
+                className={`rounded border px-2 py-1 font-mono text-sm ${
+                  profile.currentLevel === level
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-black/20 dark:border-white/25"
+                }`}
+                onClick={() => onChange({ ...profile, currentLevel: level as AcademicLevel })}
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      {(profile.systemOfStudy === undefined || profile.currentLevel === undefined) && (
+        <p className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs">
+          System of study and current term are rule inputs — CFM is co-op only, and Computer Science
+          will not consider an applicant past 2B. Until both are set, some requirements below show
+          as &ldquo;needs input&rdquo; rather than a yes or no.
+        </p>
+      )}
 
       <div className="mt-5">
         <h3 className="text-sm font-semibold">Completed terms</h3>

@@ -8,12 +8,15 @@ import {
   type CourseFilter,
 } from "./grades";
 import { EMPTY_EQUIVALENCE, type EquivalenceIndex } from "./equivalence";
+import { levelRank } from "./types";
 import type {
+  AcademicLevel,
   AcademicProfile,
   AcademicStanding,
   CourseRef,
   Evaluation,
   EvaluationStatus,
+  SystemOfStudy,
 } from "./types";
 
 /**
@@ -28,6 +31,9 @@ export type Condition =
   | { kind: "maxFailures"; max: number }
   | { kind: "academicStanding"; allowed: AcademicStanding[] }
   | { kind: "minStudyTerms"; min: number }
+  | { kind: "systemOfStudy"; required: SystemOfStudy; note?: string }
+  /** Caps how late a student may apply, e.g. "not beyond the 2B level". */
+  | { kind: "maxLevel"; max: AcademicLevel; note?: string }
   | { kind: "programExclusion"; programs: string[]; note: string }
   | { kind: "all"; label: string; of: Condition[] }
   | { kind: "any"; label: string; of: Condition[] }
@@ -176,6 +182,38 @@ export function evaluateCondition(
         status: studyTerms.length >= condition.min ? "met" : "unmet",
         requirement: `At least ${condition.min} completed full-time study term(s) at Waterloo`,
         actual: `${studyTerms.length} study term(s)`,
+      };
+    }
+
+    case "systemOfStudy": {
+      const requirement = condition.note ?? `Enrolled in the ${condition.required} system of study`;
+      if (profile.systemOfStudy === undefined) {
+        return {
+          status: "unknown",
+          requirement,
+          missingInput: "Tell the planner whether you are in co-op or the regular system.",
+        };
+      }
+      return {
+        status: profile.systemOfStudy === condition.required ? "met" : "unmet",
+        requirement,
+        actual: profile.systemOfStudy,
+      };
+    }
+
+    case "maxLevel": {
+      const requirement = condition.note ?? `Applying no later than the ${condition.max} level`;
+      if (profile.currentLevel === undefined) {
+        return {
+          status: "unknown",
+          requirement,
+          missingInput: "Enter the level you are currently in, e.g. 2A.",
+        };
+      }
+      return {
+        status: levelRank(profile.currentLevel) <= levelRank(condition.max) ? "met" : "unmet",
+        requirement,
+        actual: `currently ${profile.currentLevel}`,
       };
     }
 

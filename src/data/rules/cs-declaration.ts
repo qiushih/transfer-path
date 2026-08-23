@@ -86,10 +86,10 @@ export const csDeclaration: TransferRule = {
           "The calendar defines a typical load as: for students taking a first-year CS course, one CS course, two math courses, and two non-math electives; for students taking second-year CS courses, two CS courses, two math courses, and one non-math elective.",
       },
       {
-        kind: "manualCheck",
-        label: "Not beyond the 2B level",
-        detail:
-          "The calendar states students are normally not considered for admission beyond the 2B level.",
+        // Checkable now that the profile records the student's level.
+        kind: "maxLevel",
+        max: "2B",
+        note: "Applying no later than the 2B level",
       },
     ],
   },

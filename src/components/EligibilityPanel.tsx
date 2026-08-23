@@ -27,7 +27,13 @@ function EvaluationRow({ evaluation }: { evaluation: Evaluation }) {
 }
 
 /** The report is computed by the page so equivalence is threaded in once. */
-export function EligibilityPanel({ report }: { report: EligibilityReport }) {
+export function EligibilityPanel({
+  report,
+  heading,
+}: {
+  report: EligibilityReport;
+  heading?: string;
+}) {
   const rule = report.rule;
 
   const summary =
@@ -39,7 +45,7 @@ export function EligibilityPanel({ report }: { report: EligibilityReport }) {
 
   return (
     <Section
-      title={`Transfer eligibility — ${rule.targetProgram}`}
+      title={heading ?? `Requirements — ${rule.targetProgram}`}
       subtitle={`${summary}. Source: ${rule.source.url} (retrieved ${rule.source.retrieved}).`}
     >
       <ul className="divide-y divide-black/5 dark:divide-white/10">

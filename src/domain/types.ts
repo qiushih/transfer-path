@@ -25,6 +25,26 @@ export type AcademicStanding =
 
 export type TermSeason = "F" | "W" | "S";
 
+/**
+ * Co-op is not a preference but a rule input: CFM requires co-op enrolment,
+ * and Mathematics will not accept an application submitted during a scheduled
+ * work term.
+ */
+export type SystemOfStudy = "co-op" | "regular";
+
+/**
+ * Waterloo levels, in order. Several plans cap how late a student may apply —
+ * Computer Science is "normally not considered beyond the 2B level" — so this
+ * has to be comparable, not just displayable.
+ */
+export const ACADEMIC_LEVELS = ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"] as const;
+
+export type AcademicLevel = (typeof ACADEMIC_LEVELS)[number];
+
+export function levelRank(level: AcademicLevel): number {
+  return ACADEMIC_LEVELS.indexOf(level);
+}
+
 /** UW term codes are (year - 1900) followed by a season digit: 1249 = Fall 2024. */
 export type TermCode = string;
 
@@ -61,6 +81,10 @@ export type AcademicProfile = {
    * never assume good standing, since that would silently pass a rule.
    */
   currentStanding?: AcademicStanding;
+  /** Absent means unknown; rules that depend on it report "needs input". */
+  systemOfStudy?: SystemOfStudy;
+  /** The level the student is in now, e.g. "2A". Absent means unknown. */
+  currentLevel?: AcademicLevel;
 };
 
 /**

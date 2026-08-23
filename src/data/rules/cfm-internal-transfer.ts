@@ -95,9 +95,15 @@ export const cfmInternalTransfer: TransferRule = {
       },
       { kind: "minStudyTerms", min: 2 },
       {
+        kind: "systemOfStudy",
+        required: "co-op",
+        note: "Enrolled as a co-op student (CFM is co-op only)",
+      },
+      {
         kind: "manualCheck",
-        label: "Enrolled as a co-op student at Waterloo",
-        detail: "CFM requires co-op enrolment, and transfers from other post-secondary institutions are not eligible.",
+        label: "Currently a University of Waterloo student",
+        detail:
+          "Transfers to CFM from other post-secondary institutions are not eligible due to limitations with courses and co-op.",
       },
     ],
   },
