@@ -1,6 +1,17 @@
 import type { TransferRule } from "@/domain/eligibility";
 import { cfmInternalTransfer } from "./rules/cfm-internal-transfer";
 import { csDeclaration } from "./rules/cs-declaration";
+import {
+  actuarialScienceDeclaration,
+  appliedMathDeclaration,
+  coDeclaration,
+  computationalMathDeclaration,
+  dataScienceDeclaration,
+  farmDeclaration,
+  mathEconDeclaration,
+  pureMathDeclaration,
+  statisticsDeclaration,
+} from "./rules/math-majors";
 import { mathInternalTransfer } from "./rules/math-internal-transfer";
 import { scienceInternalTransfer } from "./rules/science-internal-transfer";
 
@@ -52,6 +63,61 @@ export const FACULTIES: FacultyTarget[] = [
         declarationRule: cfmInternalTransfer,
         requiresFacultyTransfer: false,
         note: "CFM admits directly from any Waterloo program, so the Faculty of Mathematics transfer is not a separate step.",
+      },
+      {
+        id: "datasci",
+        name: "Data Science (BMath)",
+        declarationRule: dataScienceDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "actsc",
+        name: "Actuarial Science",
+        declarationRule: actuarialScienceDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "co",
+        name: "Combinatorics and Optimization",
+        declarationRule: coDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "stat",
+        name: "Statistics",
+        declarationRule: statisticsDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "amath",
+        name: "Applied Mathematics",
+        declarationRule: appliedMathDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "pmath",
+        name: "Pure Mathematics",
+        declarationRule: pureMathDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "cm",
+        name: "Computational Mathematics",
+        declarationRule: computationalMathDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "mathec",
+        name: "Mathematical Economics",
+        declarationRule: mathEconDeclaration,
+        requiresFacultyTransfer: true,
+      },
+      {
+        id: "farm",
+        name: "Financial Analysis and Risk Management (FARM)",
+        declarationRule: farmDeclaration,
+        requiresFacultyTransfer: true,
+        note: "Most FARM students are admitted at Year One directly. Transferring in later is not the usual route.",
       },
       {
         id: "undecided",

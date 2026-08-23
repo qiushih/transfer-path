@@ -100,3 +100,94 @@ describe("faculty and program are separate gates", () => {
     expect(findProgram(science, "cs").id).toBe(science.programs[0].id);
   });
 });
+
+describe("Faculty of Mathematics majors", () => {
+  const math = findFaculty("math");
+  const ids = math.programs.map((p) => p.id);
+
+  it("offers the majors a student would actually pick between", () => {
+    expect(ids).toEqual(
+      expect.arrayContaining(["cs", "datasci", "actsc", "co", "stat", "amath", "pmath", "cm", "mathec", "farm"]),
+    );
+  });
+
+  it("cites a real Waterloo source and a retrieval date for every major", () => {
+    for (const program of math.programs) {
+      if (!program.declarationRule) continue;
+      // CFM cites its own faculty page rather than the calendar, which is
+      // where its transfer conditions are actually published.
+      expect(program.declarationRule.source.url).toContain("uwaterloo.ca");
+      expect(program.declarationRule.source.retrieved).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  it("keeps program ids unique so selection cannot be ambiguous", () => {
+    expect(ids).toHaveLength(new Set(ids).size);
+  });
+});
+
+describe("majors differ from each other where the calendar says they do", () => {
+  const math = findFaculty("math");
+  const ruleFor = (id: string) => findProgram(math, id).declarationRule!;
+
+  it("does not require CS 136L for Data Science, unlike Computer Science", () => {
+    const cs = JSON.stringify(ruleFor("cs").condition);
+    const ds = JSON.stringify(ruleFor("datasci").condition);
+    expect(cs).toContain('"catalogNumber":"136L"');
+    expect(ds).not.toContain('"catalogNumber":"136L"');
+  });
+
+  it("uses Computational Mathematics' 60% major average, not the usual 65%", () => {
+    const cm = JSON.stringify(ruleFor("cm").condition);
+    const co = JSON.stringify(ruleFor("co").condition);
+    expect(cm).toContain('"min":60');
+    expect(co).toContain('"min":65');
+  });
+
+  it("gates Actuarial Science on MTHEL 131", () => {
+    expect(JSON.stringify(ruleFor("actsc").condition)).toContain('"subject":"MTHEL"');
+  });
+
+  it("keeps the Actuarial Science fallback for students with no major average yet", () => {
+    const report = checkEligibility(
+      ruleFor("actsc"),
+      profileOf({
+        attempts: Array.from({ length: 10 }, (_, i) => ({
+          course: { subject: "MATH", catalogNumber: `1${30 + i}` },
+          termCode: "1249",
+          units: 0.5,
+          grade: { kind: "numeric" as const, value: 75 },
+        })),
+      }),
+    );
+    const fallback = report.evaluation.children?.find((c) => /Major average of 70/.test(c.requirement));
+    expect(fallback?.status).toBe("met");
+  });
+
+  it("separates the Mathematics and Economics averages for Mathematical Economics", () => {
+    const rule = JSON.stringify(ruleFor("mathec").condition);
+    expect(rule).toContain("Economics average");
+    expect(rule).toContain('"subjects":["ECON"]');
+  });
+});
+
+describe("majors with no declaration requirements say so plainly", () => {
+  const math = findFaculty("math");
+
+  it("reports only averages for Combinatorics and Optimization", () => {
+    const rule = findProgram(math, "co").declarationRule!;
+    const kinds = (rule.condition as { of: { kind: string }[] }).of.map((c) => c.kind);
+    // The calendar states no course or level conditions for CO.
+    expect(kinds).toEqual(["cumulativeAverage", "filteredAverage"]);
+  });
+
+  it("says in its notes that nothing further is required", () => {
+    const rule = findProgram(math, "co").declarationRule!;
+    expect(rule.notes?.join(" ")).toContain("no declaration requirements");
+  });
+
+  it("still leaves the faculty transfer in place for those majors", () => {
+    const co = findProgram(math, "co");
+    expect(rulesFor(math, co).map((r) => r.id)).toEqual(["math-internal-transfer", "co-declaration"]);
+  });
+});
