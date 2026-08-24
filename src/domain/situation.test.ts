@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { FACULTIES, findFaculty, findProgram, rulesFor } from "@/data/faculties";
+import { FACULTIES, declarableProgramsOf, findFaculty, findProgram, rulesFor } from "@/data/faculties";
 import { cfmInternalTransfer } from "@/data/rules/cfm-internal-transfer";
 import { csDeclaration } from "@/data/rules/cs-declaration";
 import { checkEligibility } from "./eligibility";
+import { findGaps } from "./gaps";
 import type { AcademicLevel, AcademicProfile, SystemOfStudy } from "./types";
 
 function profileOf(over: Partial<AcademicProfile> = {}): AcademicProfile {
@@ -189,5 +190,51 @@ describe("majors with no declaration requirements say so plainly", () => {
   it("still leaves the faculty transfer in place for those majors", () => {
     const co = findProgram(math, "co");
     expect(rulesFor(math, co).map((r) => r.id)).toEqual(["math-internal-transfer", "co-declaration"]);
+  });
+});
+
+describe("declaring a major is a different question from transferring", () => {
+  const math = findFaculty("math");
+
+  it("offers only majors that have a transcribed rule", () => {
+    for (const program of declarableProgramsOf(math)) {
+      expect(program.declarationRule).toBeDefined();
+    }
+  });
+
+  it("does not offer 'Not decided yet' as something to declare", () => {
+    // It exists so a transferring student can see faculty requirements alone;
+    // there is nothing to declare.
+    expect(declarableProgramsOf(math).map((p) => p.id)).not.toContain("undecided");
+  });
+
+  it("checks only the declaration rule, not the faculty transfer", () => {
+    // A student already in Mathematics has cleared the faculty gate; repeating
+    // it would bury the conditions that still apply to them.
+    const cs = findProgram(math, "cs");
+    const declaring = [cs.declarationRule!];
+    const transferring = rulesFor(math, cs);
+
+    expect(declaring.map((r) => r.id)).toEqual(["cs-declaration"]);
+    expect(transferring.map((r) => r.id)).toContain("math-internal-transfer");
+    expect(declaring.map((r) => r.id)).not.toContain("math-internal-transfer");
+  });
+
+  it("produces fewer gaps than the transfer route for the same student", () => {
+    const cs = findProgram(math, "cs");
+    const profile = profileOf({ currentProgram: "MATH-UNDECLARED", currentLevel: "1B" });
+
+    const declareGaps = findGaps([checkEligibility(cs.declarationRule!, profile)], profile);
+    const transferGaps = findGaps(
+      rulesFor(math, cs).map((r) => checkEligibility(r, profile)),
+      profile,
+    );
+
+    expect(declareGaps.length).toBeLessThan(transferGaps.length);
+  });
+
+  it("keeps every declarable major reachable from the Mathematics faculty", () => {
+    const ids = declarableProgramsOf(math).map((p) => p.id);
+    expect(ids).toEqual(expect.arrayContaining(["cs", "co", "stat", "actsc", "datasci"]));
   });
 });

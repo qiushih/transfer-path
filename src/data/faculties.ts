@@ -150,6 +150,21 @@ export function findProgram(faculty: FacultyTarget, id: string): ProgramTarget {
   return faculty.programs.find((p) => p.id === id) ?? faculty.programs[0];
 }
 
+/**
+ * Programs a student already inside the faculty could declare.
+ *
+ * "Not decided yet" is excluded: it exists so someone transferring can see the
+ * faculty requirements alone, but there is nothing to declare. Programs with
+ * no transcribed rule are excluded too, since offering them would imply the
+ * tool knows requirements it does not have.
+ */
+export function declarableProgramsOf(faculty: FacultyTarget): ProgramTarget[] {
+  return faculty.programs.filter((p) => p.declarationRule !== undefined);
+}
+
+/** The faculty whose students can use the declaration dashboard. */
+export const DECLARING_FACULTY_ID = "math";
+
 /** The rules that actually apply, in the order a student would clear them. */
 export function rulesFor(faculty: FacultyTarget, program: ProgramTarget): TransferRule[] {
   const rules: TransferRule[] = [];

@@ -2,19 +2,26 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import catalogData from "@/data/catalog.json";
-import { findFaculty, findProgram, rulesFor } from "@/data/faculties";
+import {
+  DECLARING_FACULTY_ID,
+  declarableProgramsOf,
+  findFaculty,
+  findProgram,
+  rulesFor,
+} from "@/data/faculties";
 import type { Catalog } from "@/domain/catalog";
-import { checkEligibility } from "@/domain/eligibility";
-import { buildEquivalenceIndex } from "@/domain/equivalence";
+import { checkEligibility, type EligibilityReport, type TransferRule } from "@/domain/eligibility";
+import { buildEquivalenceIndex, type EquivalenceIndex } from "@/domain/equivalence";
 import { findGaps, neededCourses, openChoices } from "@/domain/gaps";
 import { planPath } from "@/domain/planner";
 import type { AcademicProfile } from "@/domain/types";
 import { EligibilityPanel } from "@/components/EligibilityPanel";
 import { FacultyStep, ProgramStep } from "@/components/GuidedSetup";
+import { ModeTabs, type AppMode } from "@/components/ModeTabs";
 import { PlannerPanel } from "@/components/PlannerPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { TranscriptImport } from "@/components/TranscriptImport";
-import { Section } from "@/components/ui";
+import { Section, inputClass } from "@/components/ui";
 import { EMPTY_PROFILE, clearProfile, loadProfile, mountedStore, saveProfile } from "@/lib/storage";
 
 const catalog = catalogData as Catalog;
@@ -33,8 +40,10 @@ export default function Home() {
 
 function Planner() {
   const [profile, setProfile] = useState<AcademicProfile>(loadProfile);
+  const [mode, setMode] = useState<AppMode>("transfer");
   const [facultyId, setFacultyId] = useState("math");
-  const [programId, setProgramId] = useState("cs");
+  const [transferProgramId, setTransferProgramId] = useState("cs");
+  const [declareProgramId, setDeclareProgramId] = useState("cs");
 
   useEffect(() => {
     saveProfile(profile);
@@ -44,80 +53,35 @@ function Planner() {
   // profile keystroke.
   const equivalence = useMemo(() => buildEquivalenceIndex(catalog.courses), []);
 
-  const faculty = findFaculty(facultyId);
-  const program = findProgram(faculty, programId);
-  const rules = rulesFor(faculty, program);
-
-  const facultyReport = program.requiresFacultyTransfer
-    ? checkEligibility(faculty.transferRule, profile, equivalence)
-    : null;
-  const programReport = program.declarationRule
-    ? checkEligibility(program.declarationRule, profile, equivalence)
-    : null;
-
-  // The plan spans every gate that applies, since a student has to clear them
-  // all before they can end up in the program.
-  const reports = rules.map((rule) => checkEligibility(rule, profile, equivalence));
-  const gaps = findGaps(reports, profile);
-  const needed = neededCourses(gaps, catalog, profile);
-  const choices = openChoices(gaps, catalog, profile);
-  const plan = planPath(needed, profile, "F");
-
   return (
     <Shell>
       <TranscriptImport profile={profile} onChange={setProfile} />
 
       <ProfilePanel profile={profile} onChange={setProfile} />
 
-      <FacultyStep
-        faculty={faculty}
-        onFacultyChange={(id) => {
-          setFacultyId(id);
-          // The old program belonged to the old faculty.
-          setProgramId(findFaculty(id).programs[0].id);
-        }}
-      />
+      <ModeTabs mode={mode} onChange={setMode} />
 
-      {facultyReport ? (
-        <EligibilityPanel
-          report={facultyReport}
-          heading={`Requirements to enter the ${faculty.name}`}
+      {mode === "transfer" ? (
+        <TransferDashboard
+          profile={profile}
+          equivalence={equivalence}
+          facultyId={facultyId}
+          programId={transferProgramId}
+          onFacultyChange={(id) => {
+            setFacultyId(id);
+            // The old program belonged to the old faculty.
+            setTransferProgramId(findFaculty(id).programs[0].id);
+          }}
+          onProgramChange={setTransferProgramId}
         />
       ) : (
-        <Section
-          title="No separate faculty step"
-          subtitle={`${program.name} admits directly.`}
-        >
-          <p className="text-sm opacity-70">
-            {program.note ?? "This program admits directly, so there is no faculty transfer to clear first."}
-          </p>
-        </Section>
-      )}
-
-      <ProgramStep faculty={faculty} program={program} onProgramChange={setProgramId} />
-
-      {programReport ? (
-        <EligibilityPanel
-          report={programReport}
-          heading={`Requirements to get into ${program.name}`}
+        <DeclareDashboard
+          profile={profile}
+          equivalence={equivalence}
+          programId={declareProgramId}
+          onProgramChange={setDeclareProgramId}
         />
-      ) : (
-        <Section title={`Requirements for ${program.name}`} subtitle="Nothing further to check.">
-          <p className="text-sm opacity-70">
-            No program-level requirements have been transcribed for this choice, so only the faculty
-            requirements above apply. Individual majors usually set their own additional conditions —
-            confirm with an advisor.
-          </p>
-        </Section>
       )}
-
-      <PlannerPanel
-        gaps={gaps}
-        plan={plan}
-        choices={choices}
-        startSeason="F"
-        startYear={new Date().getFullYear()}
-      />
 
       <footer className="flex items-center justify-between border-t border-black/10 pt-4 text-xs opacity-60 dark:border-white/15">
         <span>Unofficial. Always confirm with an academic advisor.</span>
@@ -135,13 +99,158 @@ function Planner() {
   );
 }
 
+/** Shared tail: what still blocks the student, and the earliest route through it. */
+function Outcome({
+  rules,
+  profile,
+  equivalence,
+}: {
+  rules: TransferRule[];
+  profile: AcademicProfile;
+  equivalence: EquivalenceIndex;
+}) {
+  const reports = rules.map((rule) => checkEligibility(rule, profile, equivalence));
+  const gaps = findGaps(reports, profile);
+  const needed = neededCourses(gaps, catalog, profile);
+  const choices = openChoices(gaps, catalog, profile);
+  const plan = planPath(needed, profile, "F");
+
+  return (
+    <PlannerPanel
+      gaps={gaps}
+      plan={plan}
+      choices={choices}
+      startSeason="F"
+      startYear={new Date().getFullYear()}
+    />
+  );
+}
+
+function TransferDashboard({
+  profile,
+  equivalence,
+  facultyId,
+  programId,
+  onFacultyChange,
+  onProgramChange,
+}: {
+  profile: AcademicProfile;
+  equivalence: EquivalenceIndex;
+  facultyId: string;
+  programId: string;
+  onFacultyChange: (id: string) => void;
+  onProgramChange: (id: string) => void;
+}) {
+  const faculty = findFaculty(facultyId);
+  const program = findProgram(faculty, programId);
+
+  const facultyReport: EligibilityReport | null = program.requiresFacultyTransfer
+    ? checkEligibility(faculty.transferRule, profile, equivalence)
+    : null;
+  const programReport = program.declarationRule
+    ? checkEligibility(program.declarationRule, profile, equivalence)
+    : null;
+
+  return (
+    <>
+      <FacultyStep faculty={faculty} onFacultyChange={onFacultyChange} />
+
+      {facultyReport ? (
+        <EligibilityPanel
+          report={facultyReport}
+          heading={`Requirements to enter the ${faculty.name}`}
+        />
+      ) : (
+        <Section title="No separate faculty step" subtitle={`${program.name} admits directly.`}>
+          <p className="text-sm opacity-70">
+            {program.note ??
+              "This program admits directly, so there is no faculty transfer to clear first."}
+          </p>
+        </Section>
+      )}
+
+      <ProgramStep faculty={faculty} program={program} onProgramChange={onProgramChange} />
+
+      {programReport ? (
+        <EligibilityPanel
+          report={programReport}
+          heading={`Requirements to get into ${program.name}`}
+        />
+      ) : (
+        <Section title={`Requirements for ${program.name}`} subtitle="Nothing further to check.">
+          <p className="text-sm opacity-70">
+            No program-level requirements have been transcribed for this choice, so only the faculty
+            requirements above apply. Individual majors usually set their own additional conditions —
+            confirm with an advisor.
+          </p>
+        </Section>
+      )}
+
+      <Outcome rules={rulesFor(faculty, program)} profile={profile} equivalence={equivalence} />
+    </>
+  );
+}
+
+/**
+ * For students already inside the Faculty of Mathematics. The faculty transfer
+ * is deliberately absent: they have already cleared it, and repeating it here
+ * would bury the conditions that still apply.
+ */
+function DeclareDashboard({
+  profile,
+  equivalence,
+  programId,
+  onProgramChange,
+}: {
+  profile: AcademicProfile;
+  equivalence: EquivalenceIndex;
+  programId: string;
+  onProgramChange: (id: string) => void;
+}) {
+  const faculty = findFaculty(DECLARING_FACULTY_ID);
+  const options = declarableProgramsOf(faculty);
+  const program = options.find((p) => p.id === programId) ?? options[0];
+  const rule = program.declarationRule;
+
+  return (
+    <>
+      <Section
+        title="Which major do you want to declare?"
+        subtitle={`Assumes you are already in the ${faculty.name}. If you are not, use the transfer tab instead.`}
+      >
+        <select
+          className={inputClass}
+          value={program.id}
+          onChange={(e) => onProgramChange(e.target.value)}
+        >
+          {options.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {program.note && <p className="mt-1 text-xs opacity-70">{program.note}</p>}
+      </Section>
+
+      {rule && (
+        <EligibilityPanel
+          report={checkEligibility(rule, profile, equivalence)}
+          heading={`Requirements to declare ${program.name}`}
+        />
+      )}
+
+      <Outcome rules={rule ? [rule] : []} profile={profile} equivalence={equivalence} />
+    </>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
       <header>
-        <h1 className="text-2xl font-bold">UW Internal Transfer Planner</h1>
+        <h1 className="text-2xl font-bold">UW Transfer &amp; Major Planner</h1>
         <p className="mt-1 text-sm opacity-70">
-          Find out what you still need before you can apply to transfer or declare a major at
+          Find out what you still need before you can transfer into a faculty or declare a major at
           Waterloo, and the earliest term you could be eligible.
         </p>
       </header>

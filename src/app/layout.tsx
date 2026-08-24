@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UW Internal Transfer Planner",
+  title: "UW Transfer & Major Planner",
   description:
-    "Check eligibility to transfer between University of Waterloo programs, see how completed courses carry over, and plan the courses still outstanding.",
+    "Check what you still need to transfer into a University of Waterloo faculty or declare a major, and the earliest term you could be eligible.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
