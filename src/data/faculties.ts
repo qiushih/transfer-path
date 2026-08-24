@@ -1,5 +1,7 @@
 import type { TransferRule } from "@/domain/eligibility";
 import { cfmInternalTransfer } from "./rules/cfm-internal-transfer";
+import { engineeringInternalTransfer } from "./rules/engineering-internal-transfer";
+import { softwareEngineeringTransfer } from "./rules/se-internal-transfer";
 import { csDeclaration } from "./rules/cs-declaration";
 import {
   actuarialScienceDeclaration,
@@ -124,6 +126,29 @@ export const FACULTIES: FacultyTarget[] = [
         name: "Not decided yet",
         requiresFacultyTransfer: true,
         note: "Shows only what is needed to enter the faculty. Individual majors set their own additional requirements.",
+      },
+    ],
+  },
+  {
+    id: "engineering",
+    name: "Faculty of Engineering",
+    transferRule: engineeringInternalTransfer,
+    programs: [
+      {
+        id: "se",
+        name: "Software Engineering",
+        declarationRule: softwareEngineeringTransfer,
+        // 1B, 2A and 2B entry is a direct application to the SE Director and
+        // does not go through Engineering Admissions, so requiring the faculty
+        // transfer would impose the 1A restart on a route that avoids it.
+        requiresFacultyTransfer: false,
+        note: "Entry at 1B, 2A or 2B is a direct application to the SE Director. Only 1A entry goes through Engineering Admissions, which carries the faculty requirements and the 1A restart.",
+      },
+      {
+        id: "undecided",
+        name: "Not decided yet",
+        requiresFacultyTransfer: true,
+        note: "Engineering programs other than Software Engineering are entered through the faculty transfer process above, which starts every student in 1A.",
       },
     ],
   },

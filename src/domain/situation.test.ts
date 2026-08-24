@@ -238,3 +238,131 @@ describe("declaring a major is a different question from transferring", () => {
     expect(ids).toEqual(expect.arrayContaining(["cs", "co", "stat", "actsc", "datasci"]));
   });
 });
+
+describe("the per-course grade floor", () => {
+  const eng = findFaculty("engineering");
+  const rule = eng.transferRule;
+  const floorRow = (p: AcademicProfile) =>
+    checkEligibility(rule, p).evaluation.children?.find((c) => /Math and science grades/.test(c.requirement));
+
+  const graded = (subject: string, catalogNumber: string, value: number) => ({
+    course: { subject, catalogNumber },
+    termCode: "1249",
+    units: 0.5,
+    grade: { kind: "numeric" as const, value },
+  });
+
+  it("fails on a single course below the floor, even with a high average", () => {
+    // 95 and 65 average to 80, comfortably above the 75% cumulative bar, but
+    // the 65 is exactly what Engineering says may deny an application.
+    const row = floorRow(profileOf({ attempts: [graded("MATH", "137", 95), graded("PHYS", "121", 65)] }));
+    expect(row?.status).toBe("unmet");
+    expect(row?.actual).toContain("PHYS 121");
+  });
+
+  it("passes when every matching course clears the floor", () => {
+    const row = floorRow(profileOf({ attempts: [graded("MATH", "137", 72), graded("CHEM", "120", 88)] }));
+    expect(row?.status).toBe("met");
+  });
+
+  it("ignores courses the filter does not match", () => {
+    // A low English grade is not a math or science grade.
+    const row = floorRow(profileOf({ attempts: [graded("MATH", "137", 90), graded("ENGL", "109", 55)] }));
+    expect(row?.status).toBe("met");
+  });
+
+  it("asks rather than deciding when a matching course has no numeric grade", () => {
+    const row = floorRow(
+      profileOf({
+        attempts: [
+          graded("MATH", "137", 90),
+          {
+            course: { subject: "PHYS", catalogNumber: "121" },
+            termCode: "1249",
+            units: 0.5,
+            grade: { kind: "symbol" as const, value: "CR" },
+          },
+        ],
+      }),
+    );
+    expect(row?.status).toBe("unknown");
+  });
+
+  it("asks rather than passing when there are no matching courses at all", () => {
+    expect(floorRow(profileOf())?.status).toBe("unknown");
+  });
+});
+
+describe("Engineering's 1A restart is surfaced, not buried", () => {
+  const eng = findFaculty("engineering");
+
+  it("makes restarting in 1A a condition the student must acknowledge", () => {
+    const row = checkEligibility(eng.transferRule, profileOf()).evaluation.children?.find((c) =>
+      /restart in 1A/.test(c.requirement),
+    );
+    expect(row).toBeDefined();
+    expect(row?.missingInput).toContain("September");
+  });
+
+  it("routes non-SE Engineering programs through the faculty transfer", () => {
+    const undecided = findProgram(eng, "undecided");
+    expect(rulesFor(eng, undecided).map((r) => r.id)).toEqual(["engineering-internal-transfer"]);
+  });
+});
+
+describe("Software Engineering entry points", () => {
+  const eng = findFaculty("engineering");
+  const se = findProgram(eng, "se");
+  const rule = se.declarationRule!;
+
+  const graded = (subject: string, catalogNumber: string, value = 92) => ({
+    course: { subject, catalogNumber },
+    termCode: "1249",
+    units: 0.5,
+    grade: { kind: "numeric" as const, value },
+  });
+
+  const entryRow = (p: AcademicProfile) =>
+    checkEligibility(rule, p).evaluation.children?.find((c) => /entry point/.test(c.requirement));
+
+  it("does not force the 1A restart, since 1B/2A/2B apply directly to the SE Director", () => {
+    expect(se.requiresFacultyTransfer).toBe(false);
+    expect(rulesFor(eng, se).map((r) => r.id)).toEqual(["se-internal-transfer"]);
+  });
+
+  it("accepts the shortest published course list as one valid entry point", () => {
+    const row = entryRow(profileOf({ attempts: [graded("MATH", "117")] }));
+    expect(row?.status).toBe("met");
+  });
+
+  it("accepts a later entry point's fuller course list", () => {
+    const row = entryRow(
+      profileOf({
+        attempts: [
+          graded("MATH", "135"),
+          graded("STAT", "230"),
+          graded("CS", "245"),
+          graded("CS", "241"),
+          graded("CS", "138"),
+        ],
+      }),
+    );
+    expect(row?.status).toBe("met");
+  });
+
+  it("reports no entry point when none of the lists is complete", () => {
+    const row = entryRow(profileOf({ attempts: [graded("CS", "137")] }));
+    expect(row?.status).toBe("unmet");
+  });
+
+  it("holds SE to its own averages rather than the faculty's", () => {
+    const text = JSON.stringify(rule.condition);
+    expect(text).toContain('"min":87');
+    expect(text).toContain('"min":90');
+    expect(text).not.toContain('"min":75');
+  });
+
+  it("flags the software-average subject list as approximate", () => {
+    expect(JSON.stringify(rule.condition)).toContain("approximate");
+  });
+});

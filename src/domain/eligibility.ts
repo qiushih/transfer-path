@@ -32,6 +32,12 @@ export type Condition =
   | { kind: "academicStanding"; allowed: AcademicStanding[] }
   | { kind: "minStudyTerms"; min: number }
   | { kind: "systemOfStudy"; required: SystemOfStudy; note?: string }
+  /**
+   * A floor every matching course must clear individually, which an average
+   * cannot express: Engineering may deny an applicant for a single math or
+   * science grade below 70% even when their average is far above it.
+   */
+  | { kind: "minGradeInEvery"; filter: CourseFilter; min: number; label: string }
   /** Caps how late a student may apply, e.g. "not beyond the 2B level". */
   | { kind: "maxLevel"; max: AcademicLevel; note?: string }
   | { kind: "programExclusion"; programs: string[]; note: string }
@@ -182,6 +188,46 @@ export function evaluateCondition(
         status: studyTerms.length >= condition.min ? "met" : "unmet",
         requirement: `At least ${condition.min} completed full-time study term(s) at Waterloo`,
         actual: `${studyTerms.length} study term(s)`,
+      };
+    }
+
+    case "minGradeInEvery": {
+      const requirement = `${condition.label}: every course at ${condition.min}% or higher`;
+      const matching = profile.attempts.filter(
+        (a) => matchesFilter(a.course, condition.filter) && isCompleted(a),
+      );
+      if (matching.length === 0) {
+        return {
+          status: "unknown",
+          requirement,
+          missingInput: `No completed ${describeFilter(condition.filter)} courses on file.`,
+        };
+      }
+      // Only numeric grades can be compared against a floor; a CR pass is
+      // indeterminate and defers to the student rather than failing them.
+      const below = matching.filter(
+        (a) => a.grade.kind === "numeric" && a.grade.value < condition.min,
+      );
+      const unknownGrades = matching.filter((a) => a.grade.kind !== "numeric");
+
+      if (below.length > 0) {
+        return {
+          status: "unmet",
+          requirement,
+          actual: `below the floor: ${below.map((a) => courseKey(a.course)).join(", ")}`,
+        };
+      }
+      if (unknownGrades.length > 0) {
+        return {
+          status: "unknown",
+          requirement,
+          missingInput: `No numeric grade for ${unknownGrades.map((a) => courseKey(a.course)).join(", ")}.`,
+        };
+      }
+      return {
+        status: "met",
+        requirement,
+        actual: `${matching.length} course(s) all at or above ${condition.min}%`,
       };
     }
 
