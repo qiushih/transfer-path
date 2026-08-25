@@ -68,3 +68,23 @@ export function parseTermLabel(text: string): TermCode | null {
   const explicit = /\b(1\d{2}[159])\b/.exec(text);
   return explicit ? explicit[1] : null;
 }
+
+/**
+ * Calendar years a student could plausibly be governed by, newest first.
+ *
+ * A Waterloo calendar year runs September to August, so the one currently in
+ * effect is decided by the month, not just the year. The list leads with the
+ * *upcoming* year because that is the one a planner is working toward: by the
+ * time someone is choosing courses in August, the year they care about starts
+ * next month.
+ */
+export function recentCalendarYears(count = 10, now = new Date()): string[] {
+  // Month index 8 is September, when a new calendar year takes effect.
+  const currentStart = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+  const newestStart = currentStart + 1;
+
+  return Array.from({ length: count }, (_, i) => {
+    const start = newestStart - i;
+    return `${start}-${start + 1}`;
+  });
+}

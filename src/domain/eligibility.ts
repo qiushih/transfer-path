@@ -264,8 +264,19 @@ export function evaluateCondition(
     }
 
     case "programExclusion": {
+      // An unknown program must not read as "not excluded". Treating a blank
+      // as a pass is the exact failure this engine avoids everywhere else, and
+      // it would tell a Pharmacy student they are eligible for Science.
+      if (profile.currentProgram.trim() === "") {
+        return {
+          status: "unknown",
+          requirement: condition.note,
+          missingInput: `Confirm you are not currently in one of: ${condition.programs.join(", ")}.`,
+        };
+      }
+
       const excluded = condition.programs.some(
-        (p) => p.toUpperCase() === profile.currentProgram.toUpperCase(),
+        (p) => p.toUpperCase() === profile.currentProgram.trim().toUpperCase(),
       );
       return {
         status: excluded ? "unmet" : "met",

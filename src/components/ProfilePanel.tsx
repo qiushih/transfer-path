@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { courseKey } from "@/domain/grades";
+import { recentCalendarYears } from "@/domain/terms";
 import {
   ACADEMIC_LEVELS,
   type AcademicLevel,
@@ -12,6 +13,9 @@ import {
   type TermRecord,
 } from "@/domain/types";
 import { Field, Section, inputClass } from "./ui";
+
+/** Computed once at module load; the list does not change while the page is open. */
+const CALENDAR_YEARS = recentCalendarYears();
 
 const STANDINGS: AcademicStanding[] = [
   "good",
@@ -68,21 +72,26 @@ export function ProfilePanel({
       title="Academic profile"
       subtitle="Stored only in this browser. Nothing is uploaded to a server."
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Current program">
-          <input
-            className={inputClass}
-            placeholder="SCI-BIO"
-            value={profile.currentProgram}
-            onChange={(e) => onChange({ ...profile, currentProgram: e.target.value })}
-          />
-        </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Calendar year">
-          <input
+          <select
             className={inputClass}
             value={profile.calendarYear}
             onChange={(e) => onChange({ ...profile, calendarYear: e.target.value })}
-          />
+          >
+            {/*
+              A stored year outside the offered range would otherwise select
+              the first option silently and change the student's answer.
+            */}
+            {!CALENDAR_YEARS.includes(profile.calendarYear) && profile.calendarYear && (
+              <option value={profile.calendarYear}>{profile.calendarYear}</option>
+            )}
+            {CALENDAR_YEARS.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Academic standing">
           <select

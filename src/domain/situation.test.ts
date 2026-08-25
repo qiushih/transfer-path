@@ -4,6 +4,7 @@ import { cfmInternalTransfer } from "@/data/rules/cfm-internal-transfer";
 import { csDeclaration } from "@/data/rules/cs-declaration";
 import { checkEligibility } from "./eligibility";
 import { findGaps } from "./gaps";
+import { recentCalendarYears } from "./terms";
 import type { AcademicLevel, AcademicProfile, SystemOfStudy } from "./types";
 
 function profileOf(over: Partial<AcademicProfile> = {}): AcademicProfile {
@@ -364,5 +365,60 @@ describe("Software Engineering entry points", () => {
 
   it("flags the software-average subject list as approximate", () => {
     expect(JSON.stringify(rule.condition)).toContain("approximate");
+  });
+});
+
+describe("calendar year options", () => {
+  // Built from local components: `new Date("2026-09-01")` is parsed as UTC and
+  // lands on 31 August in a western timezone, which is the boundary under test.
+  const at = (y: number, monthIndex: number, day: number) => new Date(y, monthIndex, day);
+
+  it("offers ten years, newest first", () => {
+    const years = recentCalendarYears(10, at(2026, 7, 25));
+    expect(years).toHaveLength(10);
+    expect(years[0]).toBe("2026-2027");
+    expect(years[9]).toBe("2017-2018");
+  });
+
+  it("formats each entry as a Waterloo calendar year", () => {
+    for (const year of recentCalendarYears(10, at(2026, 7, 25))) {
+      expect(year).toMatch(/^\d{4}-\d{4}$/);
+      const [start, end] = year.split("-").map(Number);
+      expect(end).toBe(start + 1);
+    }
+  });
+
+  it("rolls over in September, when a new calendar year takes effect", () => {
+    // August is still the previous year's calendar; September starts the next.
+    expect(recentCalendarYears(1, at(2026, 7, 31))[0]).toBe("2026-2027");
+    expect(recentCalendarYears(1, at(2026, 8, 1))[0]).toBe("2027-2028");
+  });
+
+  it("has no duplicates", () => {
+    const years = recentCalendarYears(10, at(2026, 7, 25));
+    expect(years).toHaveLength(new Set(years).size);
+  });
+});
+
+describe("an unknown current program is not treated as 'not excluded'", () => {
+  const science = findFaculty("science");
+
+  it("asks instead of passing when no program is on file", () => {
+    const row = checkEligibility(science.transferRule, profileOf({ currentProgram: "" }))
+      .evaluation.children?.find((c) => /not eligible/.test(c.requirement));
+    expect(row?.status).toBe("unknown");
+    expect(row?.missingInput).toContain("PHARMACY");
+  });
+
+  it("still fails a student who is in an excluded program", () => {
+    const row = checkEligibility(science.transferRule, profileOf({ currentProgram: "PHARMACY" }))
+      .evaluation.children?.find((c) => /not eligible/.test(c.requirement));
+    expect(row?.status).toBe("unmet");
+  });
+
+  it("passes a student in a program that is not excluded", () => {
+    const row = checkEligibility(science.transferRule, profileOf({ currentProgram: "ARTS-ECON" }))
+      .evaluation.children?.find((c) => /not eligible/.test(c.requirement));
+    expect(row?.status).toBe("met");
   });
 });
