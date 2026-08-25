@@ -20,6 +20,7 @@ import { FacultyStep, ProgramStep } from "@/components/GuidedSetup";
 import { ModeTabs, type AppMode } from "@/components/ModeTabs";
 import { PlannerPanel } from "@/components/PlannerPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
+import { SuggestionBox } from "@/components/SuggestionBox";
 import { TranscriptImport } from "@/components/TranscriptImport";
 import { Section, inputClass } from "@/components/ui";
 import { EMPTY_PROFILE, clearProfile, loadProfile, mountedStore, saveProfile } from "@/lib/storage";
@@ -82,6 +83,8 @@ function Planner() {
           onProgramChange={setDeclareProgramId}
         />
       )}
+
+      <SuggestionBox profile={profile} />
 
       <footer className="flex items-center justify-between border-t border-black/10 pt-4 text-xs opacity-60 dark:border-white/15">
         <span>Unofficial. Always confirm with an academic advisor.</span>

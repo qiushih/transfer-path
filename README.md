@@ -66,6 +66,31 @@ The sync therefore drops course descriptions, which nothing renders and which ac
 of a 4.9MB file; the catalog is 1.3MB raw and about 165KB gzipped. If descriptions are ever needed
 in the UI, serve them from a separate lazily-fetched file rather than widening this one.
 
+## Suggestion box
+
+Students can send feedback from the page. Submissions are emailed through
+[Resend](https://resend.com) by `src/app/api/feedback/route.ts` — the only server-side code in the
+app, because a Resend API key cannot be shipped to a browser.
+
+Three environment variables, set in Vercel (or `.env.local` for development):
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `RESEND_API_KEY` | yes | From the Resend dashboard. Server-side only; never prefix with `NEXT_PUBLIC_`. |
+| `FEEDBACK_TO_EMAIL` | yes | Where submissions land. Kept out of the repo so it cannot be scraped. |
+| `FEEDBACK_FROM_EMAIL` | no | Defaults to `onboarding@resend.dev`, which delivers only to your own Resend account address. Set this to an address on a domain you have verified in Resend before expecting mail from anyone else's submission to arrive. |
+
+With the first two unset the endpoint returns `503` and the form reports that feedback is not
+configured, so the app still builds and deploys without them.
+
+**The profile is attached only when the student ticks the box**, which defaults to off and names
+exactly what it sends. The rest of this app keeps the transcript in the browser, and a feedback
+form is precisely the feature that quietly breaks that promise by attaching "helpful diagnostics"
+nobody asked for.
+
+Spam protection is a hidden honeypot field. A filled honeypot returns `200 OK` and sends nothing,
+so a bot cannot learn which field gave it away.
+
 ## Privacy
 
 There are no accounts and no server-side storage. A transcript is a student record, so the profile
