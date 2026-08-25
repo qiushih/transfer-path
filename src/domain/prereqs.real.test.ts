@@ -63,7 +63,7 @@ describe("real UW prerequisite strings", () => {
     }
 
     expect(checkPrereq(prerequisite, profileOf([attempt("CS", "135", 75)])).status).toBe("satisfied");
-    // CS 135 needs 60%, but CS 115 needs 90% — the gates are not interchangeable.
+    // CS 135 needs 60%, but CS 115 needs 90% - the gates are not interchangeable.
     expect(checkPrereq(prerequisite, profileOf([attempt("CS", "135", 52)])).status).toBe("not-satisfied");
     expect(checkPrereq(prerequisite, profileOf([attempt("CS", "115", 95)])).status).toBe("satisfied");
     expect(checkPrereq(prerequisite, profileOf([attempt("CS", "115", 80)])).status).toBe("not-satisfied");

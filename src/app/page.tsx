@@ -15,6 +15,7 @@ import { buildEquivalenceIndex, type EquivalenceIndex } from "@/domain/equivalen
 import { findGaps, neededCourses, openChoices } from "@/domain/gaps";
 import { planPath } from "@/domain/planner";
 import type { AcademicProfile } from "@/domain/types";
+import { ContactBox } from "@/components/ContactBox";
 import { EligibilityPanel } from "@/components/EligibilityPanel";
 import { FacultyStep, ProgramStep } from "@/components/GuidedSetup";
 import { ModeTabs, type AppMode } from "@/components/ModeTabs";
@@ -83,8 +84,10 @@ function Planner() {
         />
       )}
 
+      <ContactBox />
+
       <footer className="flex items-center justify-between border-t border-black/10 pt-4 text-xs opacity-60 dark:border-white/15">
-        <span>Unofficial — for quick reference only. Confirm with your academic advisor.</span>
+        <span>Unofficial - for quick reference only. Confirm with your academic advisor.</span>
         <button
           className="underline"
           onClick={() => {
@@ -180,7 +183,7 @@ function TransferDashboard({
         <Section title={`Requirements for ${program.name}`} subtitle="Nothing further to check.">
           <p className="text-sm opacity-70">
             No program-level requirements have been transcribed for this choice, so only the faculty
-            requirements above apply. Individual majors usually set their own additional conditions —
+            requirements above apply. Individual majors usually set their own additional conditions -
             confirm with an advisor.
           </p>
         </Section>
@@ -264,7 +267,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           role="note"
           className="mt-4 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100"
         >
-          <strong className="font-semibold">Unofficial — for quick reference only.</strong> Please
+          <strong className="font-semibold">Unofficial - for quick reference only.</strong> Please
           consult your academic advisor before trusting this information. Requirements change, and
           some conditions here cannot be checked automatically.
         </p>

@@ -67,7 +67,7 @@ function roundPct(value: number): string {
  * Equivalence belongs here rather than in a degree audit, because it changes
  * whether a student is *eligible*: a declaration rule naming CS 136 should
  * accept a course the department has confirmed as a substitute. Only verified
- * substitutions count — bare antirequisite overlap is content overlap, not
+ * substitutions count - bare antirequisite overlap is content overlap, not
  * permission, and admitting it here would tell a student they can apply when
  * they cannot.
  */

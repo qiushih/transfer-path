@@ -42,7 +42,7 @@ export const scienceInternalTransfer: TransferRule = {
     ],
   },
   notes: [
-    "Submission deadlines: Fall 2026 — 2026-08-07; Winter 2027 — 2026-12-04; Spring 2027 — 2027-04-02.",
+    "Submission deadlines: Fall 2026 - 2026-08-07; Winter 2027 - 2026-12-04; Spring 2027 - 2027-04-02.",
     "Students not in satisfactory standing may instead qualify through a non-degree term: minimum 4 courses including 2 Science courses from different areas with labs, 60% cumulative term average, and no failed or INC grades.",
   ],
 };

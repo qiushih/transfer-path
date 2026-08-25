@@ -45,7 +45,7 @@ export function EligibilityPanel({
 
   return (
     <Section
-      title={heading ?? `Requirements — ${rule.targetProgram}`}
+      title={heading ?? `Requirements - ${rule.targetProgram}`}
       subtitle={`${summary}. Source: ${rule.source.url} (retrieved ${rule.source.retrieved}).`}
     >
       <ul className="divide-y divide-black/5 dark:divide-white/10">

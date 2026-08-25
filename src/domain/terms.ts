@@ -2,7 +2,7 @@ import type { TermCode, TermSeason } from "./types";
 
 /**
  * UW term codes are (year - 1900) followed by a season digit, so Fall 2024 is
- * 1249. Note there is no leading "1" of its own — writing it that way yields a
+ * 1249. Note there is no leading "1" of its own - writing it that way yields a
  * five-digit code that the Open Data API rejects with a 404.
  */
 const SEASON_DIGIT: Record<TermSeason, string> = { W: "1", S: "5", F: "9" };

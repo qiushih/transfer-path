@@ -8,8 +8,8 @@ import type { Condition, TransferRule } from "@/domain/eligibility";
  * declaration requirements at all.** Combinatorics and Optimization, Pure
  * Mathematics, Computational Mathematics and Statistics state only minimum
  * averages, and several pages have no "Declaration Requirements" section
- * whatsoever. Only the limited-enrolment plans — Computer Science, Data
- * Science, Actuarial Science, FARM — gate on anything more.
+ * whatsoever. Only the limited-enrolment plans - Computer Science, Data
+ * Science, Actuarial Science, FARM - gate on anything more.
  *
  * That is worth showing plainly rather than padding out: a student asking
  * "what do I need for CO?" should be told the honest answer, which is the
@@ -287,7 +287,7 @@ export const farmDeclaration: TransferRule = {
         kind: "manualCheck",
         label: "Admission to a restricted-enrolment plan normally granted at Year One",
         detail:
-          "The calendar states that most students in this plan are admitted at the Year One level directly into the Mathematics/Financial Analysis and Risk Management admission category. Transferring in later is not the normal route — speak to the Math Undergraduate Office.",
+          "The calendar states that most students in this plan are admitted at the Year One level directly into the Mathematics/Financial Analysis and Risk Management admission category. Transferring in later is not the normal route - speak to the Math Undergraduate Office.",
       },
     ],
   },

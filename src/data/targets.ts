@@ -11,8 +11,8 @@ import { scienceInternalTransfer } from "./rules/science-internal-transfer";
  * requirements, which are stricter than the faculty transfer alone.
  *
  * Scope note: a target is the set of conditions to *apply or declare*. What a
- * student must do after being admitted — required upper-year courses, elective
- * bands, degree unit totals, co-op and PD — is out of scope and deliberately
+ * student must do after being admitted - required upper-year courses, elective
+ * bands, degree unit totals, co-op and PD - is out of scope and deliberately
  * not modelled anywhere in this app.
  */
 export type TransferTarget = {

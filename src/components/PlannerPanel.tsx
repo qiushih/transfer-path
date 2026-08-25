@@ -39,8 +39,8 @@ function GapList({ gaps }: { gaps: Gap[] }) {
             <p className="mt-0.5 text-xs text-red-700 dark:text-red-300">
               Need {gap.required}%
               {gap.actual === null
-                ? " — no graded courses on file yet"
-                : ` — currently ${gap.actual.toFixed(1)}%`}
+                ? " - no graded courses on file yet"
+                : ` - currently ${gap.actual.toFixed(1)}%`}
             </p>
           )}
           {gap.kind === "other" && gap.detail && (
@@ -88,7 +88,7 @@ export function PlannerPanel({
         {averageGaps > 0 && (
           <p className="mb-3 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs">
             {averageGaps} average requirement(s) are not met. Courses cannot fix an average on their
-            own — the grades you earn in them decide it, so this plan shows the earliest term you
+            own - the grades you earn in them decide it, so this plan shows the earliest term you
             could apply, not a guarantee that you will qualify.
           </p>
         )}
@@ -107,11 +107,11 @@ export function PlannerPanel({
                     <span className="font-mono">{courseKey(course.course)}</span>
                     <span className="ml-2 opacity-70">{course.title}</span>
                     <span className="ml-2 text-xs opacity-60">
-                      {course.isPrerequisite ? `— ${course.reason}` : `— for ${course.reason}`}
+                      {course.isPrerequisite ? `- ${course.reason}` : `- for ${course.reason}`}
                     </span>
                     {course.alternatives.length > 0 && (
                       <span className="block text-xs opacity-60">
-                        or {course.alternatives.map(courseKey).join(", ")} — the rule accepts any of
+                        or {course.alternatives.map(courseKey).join(", ")} - the rule accepts any of
                         these, and this one was chosen only to give the plan a concrete shape
                       </span>
                     )}
@@ -128,7 +128,7 @@ export function PlannerPanel({
             <ul className="mt-1 space-y-0.5 text-xs">
               {plan.unschedulable.map(({ course, reason }) => (
                 <li key={courseKey(course.course)}>
-                  <span className="font-mono">{courseKey(course.course)}</span> — {reason}
+                  <span className="font-mono">{courseKey(course.course)}</span> - {reason}
                 </li>
               ))}
             </ul>
@@ -140,13 +140,13 @@ export function PlannerPanel({
             <h4 className="text-sm font-semibold">Plus courses you choose yourself</h4>
             <p className="mt-0.5 text-xs opacity-70">
               These requirements do not name specific courses, so they are not slotted into terms
-              above. Suggestions are ranked by what you could take soonest — confirm with an advisor
+              above. Suggestions are ranked by what you could take soonest - confirm with an advisor
               that a course counts.
             </p>
             {choices.map((choice) => (
               <div key={choice.gap.requirement} className="mt-2">
                 <p className="text-sm">
-                  Choose {choice.gap.count} — {choice.gap.requirement}
+                  Choose {choice.gap.count} - {choice.gap.requirement}
                 </p>
                 <ul className="mt-0.5 text-xs opacity-80">
                   {choice.suggestions.map((s) => (

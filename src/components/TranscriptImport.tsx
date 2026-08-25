@@ -15,7 +15,7 @@ import type { AcademicProfile } from "@/domain/types";
 import { Section, Warning, inputClass } from "./ui";
 
 function describeGrade(row: ParsedRow): string {
-  if (!row.grade) return "—";
+  if (!row.grade) return "-";
   return row.grade.kind === "numeric" ? `${row.grade.value}%` : row.grade.value;
 }
 
@@ -59,7 +59,7 @@ export function TranscriptImport({
         const extracted = await extractPdfText(file);
         if (extracted.imageOnly) {
           setStatus(
-            "That PDF has no text layer, so it is a scan or photo. Reading those needs OCR, which this tool does not do yet — open the transcript in Quest and copy the text instead.",
+            "That PDF has no text layer, so it is a scan or photo. Reading those needs OCR, which this tool does not do yet - open the transcript in Quest and copy the text instead.",
           );
           return;
         }
@@ -195,7 +195,7 @@ export function TranscriptImport({
                       </td>
                       <td className="py-1 pr-2 font-mono">{courseKey(row.course)}</td>
                       <td className="py-1 pr-2">
-                        {row.termCode ? describeTerm(row.termCode) : "—"}
+                        {row.termCode ? describeTerm(row.termCode) : "-"}
                       </td>
                       <td className="py-1 pr-2">{row.units.toFixed(2)}</td>
                       <td className="py-1 pr-2">{describeGrade(row)}</td>

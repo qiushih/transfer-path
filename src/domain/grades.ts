@@ -24,7 +24,7 @@ export function contributesToAverage(attempt: CourseAttempt): boolean {
 
 /**
  * Units-weighted mean, matching how UW computes a cumulative average.
- * Returns null when no attempt carries a numeric grade — the caller must
+ * Returns null when no attempt carries a numeric grade - the caller must
  * surface that as "unknown" rather than treating it as zero.
  */
 export function weightedAverage(attempts: CourseAttempt[]): number | null {
@@ -91,7 +91,7 @@ export function matchesFilter(course: CourseRef, filter: CourseFilter): boolean 
 
 /**
  * Long lists are truncated because some real requirements name dozens of
- * options — the BCS elective bands cover whole faculties — and spelling every
+ * options - the BCS elective bands cover whole faculties - and spelling every
  * one out buries the sentence the student is trying to read.
  */
 function summarise(items: string[], limit = 4): string {
@@ -104,7 +104,7 @@ export function describeFilter(filter: CourseFilter): string {
 
   const parts: string[] = [];
   if (filter.minLevel !== undefined && filter.maxLevel !== undefined) {
-    parts.push(`${filter.minLevel}–${filter.maxLevel - 1} level`);
+    parts.push(`${filter.minLevel}-${filter.maxLevel - 1} level`);
   } else if (filter.minLevel !== undefined) {
     parts.push(`${filter.minLevel}+ level`);
   } else if (filter.maxLevel !== undefined) {

@@ -6,7 +6,7 @@ import type { AcademicProfile, CourseRef } from "./types";
  *   "Prereq: (MATH 135 or 145) and (MATH 137 or 147); Level at least 2A"
  * There is no structured field, so this parses the shape it recognises and
  * marks anything else as an opaque condition. An opaque condition is never
- * silently dropped — dropping it would make a course look available when it
+ * silently dropped - dropping it would make a course look available when it
  * is not.
  */
 export type PrereqExpr =
@@ -70,7 +70,7 @@ const TOKEN_PATTERN = new RegExp(
     "@(PRE|POST):(\\d{1,3})@", // 1,2 grade marker
     "(\\()", // 3
     "(\\))", // 4
-    "\\b([Oo]ne\\s+[Oo]f)\\b", // 5 — a plain list header, contributes no structure
+    "\\b([Oo]ne\\s+[Oo]f)\\b", // 5 - a plain list header, contributes no structure
     "\\b([Aa][Nn][Dd])\\b", // 6
     "\\b([Oo][Rr])\\b", // 7
     "([,;])", // 8
@@ -197,7 +197,7 @@ function parseFactor(tokens: Token[], pos: { i: number }): PrereqExpr | null {
   const token = tokens[pos.i];
   if (!token) return null;
 
-  // "at least 90% in CS 115" — the gate precedes whatever it governs.
+  // "at least 90% in CS 115" - the gate precedes whatever it governs.
   if (token.type === "gradePre") {
     pos.i += 1;
     const governed = parseFactor(tokens, pos);

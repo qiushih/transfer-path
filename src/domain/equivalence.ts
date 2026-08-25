@@ -6,11 +6,11 @@ import type { CourseRef } from "./types";
  * How one course can stand in for another, in descending order of confidence.
  * The distinction matters because the four are *not* interchangeable evidence:
  *
- * - `exact`       — the student took the course the requirement names.
- * - `alternative` — the requirement itself lists this course as acceptable.
- * - `verified`    — an official source or a curated rule says the substitution
+ * - `exact`       - the student took the course the requirement names.
+ * - `alternative` - the requirement itself lists this course as acceptable.
+ * - `verified`    - an official source or a curated rule says the substitution
  *                   is accepted for this program.
- * - `overlap`     — UW's antirequisites show the two courses cover the same
+ * - `overlap`     - UW's antirequisites show the two courses cover the same
  *                   ground. This proves *content overlap only*.
  *
  * An antirequisite says "you may not hold credit for both", which is a
@@ -83,7 +83,7 @@ export type CuratedEquivalence = {
  * Manually verified substitutions. This list is the *only* way a substitution
  * that is not an exact match or a listed alternative can satisfy a
  * requirement, so entries must cite a real source. Adding a pair here is a
- * claim that a department accepts the swap — not merely that the courses
+ * claim that a department accepts the swap - not merely that the courses
  * overlap, which the antirequisite data already tells us.
  */
 export const CURATED_EQUIVALENCES: CuratedEquivalence[] = [];

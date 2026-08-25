@@ -157,7 +157,7 @@ export const softwareEngineeringTransfer: TransferRule = {
         kind: "manualCheck",
         label: "Software development experience and version control familiarity",
         detail:
-          "Applicants submit a resume describing software development experience and familiarity with version control, plus an explanation of why Software Engineering is the right fit. The Engineering transfer page adds that programming courses taken in other programs are not always sufficient — SE looks for well-structured, modular programs.",
+          "Applicants submit a resume describing software development experience and familiarity with version control, plus an explanation of why Software Engineering is the right fit. The Engineering transfer page adds that programming courses taken in other programs are not always sufficient - SE looks for well-structured, modular programs.",
       },
     ],
   },

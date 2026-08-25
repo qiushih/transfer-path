@@ -10,7 +10,7 @@ import type { AcademicProfile, CourseRef, Evaluation } from "./types";
  *
  * This is the core question the planner answers, and it is narrower than a
  * degree audit on purpose: only conditions the transfer or declaration rules
- * actually state. Requirements that apply after admission are not gaps — the
+ * actually state. Requirements that apply after admission are not gaps - the
  * student is not blocked by them, and listing them would drown the handful of
  * things that genuinely stop an application.
  *
@@ -172,8 +172,8 @@ export type NeededCourse = {
   title: string;
   /**
    * Other courses that would have served the same purpose. A "one of" branch
-   * has no reliable ranking in the data — CS 136 accepts CS 115, CS 135, or
-   * CS 145, and which is right depends on the stream a student is in — so the
+   * has no reliable ranking in the data - CS 136 accepts CS 115, CS 135, or
+   * CS 145, and which is right depends on the stream a student is in - so the
    * plan commits to one and shows the rest rather than hiding the choice.
    */
   alternatives: CourseRef[];
@@ -214,7 +214,7 @@ function minimalPrereqChoice(
 
   switch (expr.kind) {
     case "opaque":
-      // Nothing actionable — an enrolment restriction is not a course.
+      // Nothing actionable - an enrolment restriction is not a course.
       return [];
 
     case "course": {
@@ -246,8 +246,8 @@ function minimalPrereqChoice(
         const breadth =
           offeringBreadth(option.courses, catalog) - offeringBreadth(best.courses, catalog);
         if (breadth !== 0) return breadth > 0 ? option : best;
-        // A missing gate is not evidence of an easier route — CS 145 states no
-        // percentage simply because it is the advanced stream — so gates only
+        // A missing gate is not evidence of an easier route - CS 145 states no
+        // percentage simply because it is the advanced stream - so gates only
         // decide between branches that both state one.
         if (option.gate > 0 && best.gate > 0 && option.gate !== best.gate) {
           return option.gate < best.gate ? option : best;
@@ -336,7 +336,7 @@ function offeringBreadth(courses: CourseRef[], catalog: Catalog): number {
 }
 
 /**
- * The catalog contains transfer-credit placeholders such as "ACTSC 1XX —
+ * The catalog contains transfer-credit placeholders such as "ACTSC 1XX -
  * ACTSC Transfer Credit". They match subject filters but cannot be enrolled
  * in, so proposing one as the way to close a gap is useless advice.
  */

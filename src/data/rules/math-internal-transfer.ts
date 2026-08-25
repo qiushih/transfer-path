@@ -46,7 +46,7 @@ export const mathInternalTransfer: TransferRule = {
       {
         kind: "manualCheck",
         label: "Not enrolled in a 2+2, 3+1, or 2+1+1 plan",
-        detail: "Confirm your plan is not a joint/pathway program — these are ineligible.",
+        detail: "Confirm your plan is not a joint/pathway program - these are ineligible.",
       },
       {
         kind: "manualCheck",

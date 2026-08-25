@@ -13,7 +13,7 @@ import type { TransferRule } from "@/domain/eligibility";
  * applicant actually has to do.
  *
  * Deliberately excluded: everything on the same page that applies *after*
- * admission to the major — required courses, elective bands, unit totals,
+ * admission to the major - required courses, elective bands, unit totals,
  * co-op and PD. Those are graduation requirements, not declaration criteria.
  */
 

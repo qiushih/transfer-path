@@ -144,7 +144,7 @@ export function ProfilePanel({
 
       {(profile.systemOfStudy === undefined || profile.currentLevel === undefined) && (
         <p className="mt-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs">
-          System of study and current term are rule inputs — CFM is co-op only, and Computer Science
+          System of study and current term are rule inputs - CFM is co-op only, and Computer Science
           will not consider an applicant past 2B. Until both are set, some requirements below show
           as &ldquo;needs input&rdquo; rather than a yes or no.
         </p>

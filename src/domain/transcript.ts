@@ -12,7 +12,7 @@ import type { CourseAttempt, Grade, NonNumericGrade, TermCode, TermRecord } from
  * Transcript layouts vary by faculty and by how the text was copied out of the
  * PDF, so the parser is deliberately tolerant and reports what it could not
  * read instead of guessing. Every row is shown to the student for confirmation
- * before it reaches the profile — an import that silently mis-reads a grade is
+ * before it reaches the profile - an import that silently mis-reads a grade is
  * worse than one that asks.
  */
 

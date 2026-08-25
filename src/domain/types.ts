@@ -5,9 +5,9 @@
  */
 export type NonNumericGrade =
   | "CR" // credit granted, no numeric grade
-  | "NCR" // no credit granted — counts as a failure
+  | "NCR" // no credit granted - counts as a failure
   | "WD" // withdrew, no penalty
-  | "WF" // withdrew failing — counts as a failure
+  | "WF" // withdrew failing - counts as a failure
   | "INC" // incomplete
   | "IP" // in progress
   | "AEG" // aegrotat standing
@@ -33,8 +33,8 @@ export type TermSeason = "F" | "W" | "S";
 export type SystemOfStudy = "co-op" | "regular";
 
 /**
- * Waterloo levels, in order. Several plans cap how late a student may apply —
- * Computer Science is "normally not considered beyond the 2B level" — so this
+ * Waterloo levels, in order. Several plans cap how late a student may apply -
+ * Computer Science is "normally not considered beyond the 2B level" - so this
  * has to be comparable, not just displayable.
  */
 export const ACADEMIC_LEVELS = ["1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B"] as const;
@@ -77,7 +77,7 @@ export type AcademicProfile = {
   attempts: CourseAttempt[];
   terms: TermRecord[];
   /**
-   * Present only when the student supplied it. Absent means "unknown" —
+   * Present only when the student supplied it. Absent means "unknown" -
    * never assume good standing, since that would silently pass a rule.
    */
   currentStanding?: AcademicStanding;

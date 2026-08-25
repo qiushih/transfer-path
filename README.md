@@ -4,11 +4,11 @@ Answers one question for a University of Waterloo student: **what am I missing b
 to transfer or declare my target major, and what is the earliest path to becoming eligible?**
 
 Scope is deliberately narrow. This models the conditions for *applying or declaring only*. What a
-student must do after being admitted — upper-year courses, elective bands, total degree units,
-co-op and PD — is **not** modelled, because those requirements never block an application and
+student must do after being admitted - upper-year courses, elective bands, total degree units,
+co-op and PD - is **not** modelled, because those requirements never block an application and
 listing them buries the handful of things that do.
 
-> **Unofficial — for quick reference only.** Please consult your academic advisor before trusting
+> **Unofficial - for quick reference only.** Please consult your academic advisor before trusting
 > this information. Requirements change, and some conditions cannot be checked automatically.
 
 ## Quick start
@@ -23,7 +23,7 @@ npm run dev
 
 To refresh the course catalog, register for a key at <https://openapi.data.uwaterloo.ca> and sync:
 
-**A key is mandatory.** Every v3 endpoint sits behind the global `apiKey` security scheme — an
+**A key is mandatory.** Every v3 endpoint sits behind the global `apiKey` security scheme - an
 anonymous request returns `401` with "There does not appear to be an X-API-KEY header", and an
 invalid key returns `401` too. There is no anonymous or rate-limited public tier.
 
@@ -77,19 +77,19 @@ is held in `localStorage` and never leaves the browser. "Clear my data" removes 
 The domain layer under `src/domain/` is plain TypeScript with no React or network dependencies,
 which is what makes it testable:
 
-- `types.ts` — profile, grades, terms, and the tri-state `Evaluation`
-- `grades.ts` — averages, failure rules, and the `CourseFilter` selector
-- `eligibility.ts` — the transfer and declaration rule engine
-- `gaps.ts` — what still blocks an application, and the courses that would close it
-- `prereqs.ts` — parser for UW's free-text prerequisite strings
-- `planner.ts` — term-by-term ordering of the courses needed to become eligible
-- `transcript.ts` — parses a Quest transcript into course attempts
+- `types.ts` - profile, grades, terms, and the tri-state `Evaluation`
+- `grades.ts` - averages, failure rules, and the `CourseFilter` selector
+- `eligibility.ts` - the transfer and declaration rule engine
+- `gaps.ts` - what still blocks an application, and the courses that would close it
+- `prereqs.ts` - parser for UW's free-text prerequisite strings
+- `planner.ts` - term-by-term ordering of the courses needed to become eligible
+- `transcript.ts` - parses a Quest transcript into course attempts
 
 Three design decisions carry most of the weight:
 
 **Missing input is not failure.** Every check returns `met`, `unmet`, or `unknown`. A student who
 has not entered their academic standing sees "needs input", never "ineligible". Rules that a
-transcript cannot verify — "not enrolled in a 2+2 plan" — are modelled explicitly as
+transcript cannot verify - "not enrolled in a 2+2 plan" - are modelled explicitly as
 `manualCheck` and always report `unknown`, so a clean profile reads as "no blockers found" rather
 than a guarantee.
 
@@ -107,7 +107,7 @@ The last line is the important one. An antirequisite says "you may not hold cred
 which is a statement about **duplicate credit, not about program-level substitution**. MATH 118
 and MATH 138 are mutual antirequisites, but a program naming MATH 138 is naming the Honours-stream
 course, and only the department can say whether MATH 118 is accepted for it. So overlap is
-surfaced as *"possible substitute — needs verification"* against the still-unmet requirement,
+surfaced as *"possible substitute - needs verification"* against the still-unmet requirement,
 never as a pass.
 
 Overlap is derived only from *mutual* edges (one-way edges outnumber them roughly two to one and
@@ -116,20 +116,20 @@ through shared antirequisites would merge whole families of loosely related cour
 
 `CURATED_EQUIVALENCES` is the only way to promote a pair to `verified`. Entries are directional
 unless marked `symmetric`, must carry a citation, and may be scoped by program, requirement, and
-calendar year — a swap a department allows for one program is not evidence about another. Scoped
+calendar year - a swap a department allows for one program is not evidence about another. Scoped
 entries **fail closed**: if the check cannot say which program it is looking at, the scoped
 substitution does not apply.
 
 **The plan includes prerequisites, which is what makes it a path rather than a list.** CS 136 is a
 declaration requirement; CS 135 is not, but a student with neither cannot reach CS 136 without it,
 so CS 135 is pulled into the plan and scheduled first. Only *missing* prerequisites are added, and
-a "one of" prerequisite costs one course rather than all of them — flattening the alternatives
+a "one of" prerequisite costs one course rather than all of them - flattening the alternatives
 told students to take four intro CS courses where one would do.
 
 **The tool commits to a course only when the rule names one.** A requirement like "3 math courses"
 matches hundreds of catalog entries, and picking three would dress an arbitrary choice up as
 advice; those are shown as a ranked shortlist to confirm with an advisor. Where a rule does name
-courses, the plan picks one and lists the alternatives rather than hiding the choice — the data
+courses, the plan picks one and lists the alternatives rather than hiding the choice - the data
 has no reliable way to rank CS 115 against CS 135 against CS 145.
 
 **Unparseable prerequisites are surfaced, not dropped.** UW prerequisites are prose. The parser
@@ -144,7 +144,7 @@ so the same completed course can qualify one student and not another.
 
 Roughly 36% of catalog requirement strings parse with no opaque clause; the other 64% carry at
 least one enrolment restriction. `catalog.regression.test.ts` runs the parser over all 8,600+
-synced courses and asserts it never invents a subject code — a case-insensitive pattern once made
+synced courses and asserts it never invents a subject code - a case-insensitive pattern once made
 "Level at least 2A" parse as a course in a subject called "LEAST", which hand-written fixtures
 could not reveal.
 
@@ -168,8 +168,8 @@ too.
 Two deliberate choices in the parser:
 
 - **Nothing is imported without confirmation.** Every parsed row is shown in a preview table with
-  its grade, and only rows that parsed cleanly are pre-ticked. A row with any issue — no term
-  heading above it, a missing units column, an out-of-range percentage — is shown but left
+  its grade, and only rows that parsed cleanly are pre-ticked. A row with any issue - no term
+  heading above it, a missing units column, an out-of-range percentage - is shown but left
   unticked. A silently mis-read grade is worse than one the student is asked about.
 - **Re-importing updates rather than duplicates.** Attempts are keyed by course *and* term, so
   importing an updated transcript refreshes existing rows and still keeps a genuine repeat of the
