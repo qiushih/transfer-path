@@ -84,7 +84,7 @@ function Planner() {
       )}
 
       <footer className="flex items-center justify-between border-t border-black/10 pt-4 text-xs opacity-60 dark:border-white/15">
-        <span>Unofficial. Always confirm with an academic advisor.</span>
+        <span>Unofficial — for quick reference only. Confirm with your academic advisor.</span>
         <button
           className="underline"
           onClick={() => {
@@ -248,10 +248,25 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
       <header>
-        <h1 className="text-2xl font-bold">UW Transfer &amp; Major Planner</h1>
+        <h1 className="text-2xl font-bold">UWaterloo Transfer &amp; Major Planner</h1>
         <p className="mt-1 text-sm opacity-70">
           Find out what you still need before you can transfer into a faculty or declare a major at
           Waterloo, and the earliest term you could be eligible.
+        </p>
+
+        {/*
+          Above the results rather than in the footer: a student who acts on a
+          "Met" row without reading this could apply for a program they do not
+          qualify for, and a disclaimer reachable only by scrolling past the
+          answer is one most people never see.
+        */}
+        <p
+          role="note"
+          className="mt-4 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100"
+        >
+          <strong className="font-semibold">Unofficial — for quick reference only.</strong> Please
+          consult your academic advisor before trusting this information. Requirements change, and
+          some conditions here cannot be checked automatically.
         </p>
       </header>
       {children}

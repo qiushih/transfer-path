@@ -1,4 +1,4 @@
-# UW Internal Transfer Planner
+# UWaterloo Transfer & Major Planner
 
 Answers one question for a University of Waterloo student: **what am I missing before I can apply
 to transfer or declare my target major, and what is the earliest path to becoming eligible?**
@@ -8,7 +8,8 @@ student must do after being admitted — upper-year courses, elective bands, tot
 co-op and PD — is **not** modelled, because those requirements never block an application and
 listing them buries the handful of things that do.
 
-Unofficial. Always confirm results with an academic advisor.
+> **Unofficial — for quick reference only.** Please consult your academic advisor before trusting
+> this information. Requirements change, and some conditions cannot be checked automatically.
 
 ## Quick start
 
