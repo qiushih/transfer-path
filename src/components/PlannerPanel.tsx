@@ -3,11 +3,48 @@
 import { courseKey } from "@/domain/grades";
 import type { Gap, OpenChoice } from "@/domain/gaps";
 import type { EligibilityPlan } from "@/domain/planner";
+import { isLikelyPublished, nextTermCode, scheduleUrl } from "@/domain/schedule";
 import { describeTerm, termCodeFor } from "@/domain/terms";
 import type { TermSeason } from "@/domain/types";
 import { Section, StatusPill } from "./ui";
 
 const SEASON_LABEL: Record<TermSeason, string> = { F: "Fall", W: "Winter", S: "Spring" };
+
+/**
+ * Links a recommended course to its sections on the Schedule of Classes.
+ *
+ * The plan can say a course is offered in a season, because the catalog sync
+ * records which terms it has run in. It cannot say whether a section exists
+ * next term or still has seats, which is what a student actually needs before
+ * committing to a plan.
+ */
+function SectionsLink({
+  course,
+  termCode,
+}: {
+  course: { subject: string; catalogNumber: string };
+  termCode: string;
+}) {
+  const published = isLikelyPublished(termCode);
+
+  return (
+    <a
+      className="ml-2 whitespace-nowrap text-xs underline opacity-70 hover:opacity-100"
+      href={scheduleUrl(course, termCode)}
+      target="_blank"
+      rel="noopener noreferrer"
+      // A term outside the published window returns "no matches", which reads
+      // as "not offered" unless the difference is spelled out.
+      title={
+        published
+          ? `Open the Schedule of Classes for ${describeTerm(termCode)}`
+          : `The ${describeTerm(termCode)} timetable is usually not published this far ahead, so this may show no results`
+      }
+    >
+      {published ? "check sections" : "sections (not posted yet)"}
+    </a>
+  );
+}
 
 function GapList({ gaps }: { gaps: Gap[] }) {
   if (gaps.length === 0) {
@@ -109,6 +146,7 @@ export function PlannerPanel({
                     <span className="ml-2 text-xs opacity-60">
                       {course.isPrerequisite ? `- ${course.reason}` : `- for ${course.reason}`}
                     </span>
+                    <SectionsLink course={course.course} termCode={code} />
                     {course.alternatives.length > 0 && (
                       <span className="block text-xs opacity-60">
                         or {course.alternatives.map(courseKey).join(", ")} - the rule accepts any of
@@ -153,6 +191,7 @@ export function PlannerPanel({
                     <li key={courseKey(s.course)}>
                       <span className="font-mono">{courseKey(s.course)}</span>
                       <span className="ml-2">{s.title}</span>
+                      <SectionsLink course={s.course} termCode={nextTermCode()} />
                     </li>
                   ))}
                 </ul>
