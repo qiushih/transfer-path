@@ -35,22 +35,54 @@ UW_API_KEY=your-key npm run sync
 
 The UW Open Data API v3 provides the course catalog, class schedules, subjects, and terms. It does
 **not** publish degree requirements, transfer rules, GPA cutoffs, or academic standing. So the
-project has two data layers:
+data arrives from several places:
 
 | Layer | Source | Lives in |
 | --- | --- | --- |
 | Course catalog, prerequisite text, term availability | Synced from the API | `src/data/catalog.json` |
 | Course equivalences | Derived from synced antirequisites | `src/domain/equivalence.ts` |
 | Transfer and declaration rules | Hand-curated from faculty pages and the calendar | `src/data/rules/` |
-| Which rules apply to which target | Hand-curated | `src/data/targets.ts` |
+| Which rules apply to which faculty and program | Hand-curated | `src/data/faculties.ts` |
 
 **Reaching a major is often two steps, and showing only one is wrong.** A Science student who
 wants Computer Science must be admitted to the Faculty of Mathematics *and* then meet the CS
-major's declaration requirements, which are stricter than the faculty transfer alone. A target
-therefore carries a `facultyRule` and an optional `declarationRule`, and both must be satisfied.
+major's declaration requirements, which are stricter than the faculty transfer alone. A faculty
+carries a `transferRule`; each program under it carries an optional `declarationRule`; and
+`rulesFor()` returns whichever apply, in the order a student clears them.
 
-Targets currently covered: **Computer Science** (Math transfer + CS declaration), **Faculty of
-Mathematics**, **Faculty of Science**, and **Computing and Financial Management**.
+### Faculty transfer rules
+
+| Faculty | Source |
+| --- | --- |
+| Mathematics | `uwaterloo.ca/math/internal-transfer` |
+| Engineering | `uwaterloo.ca/engineering/undergraduate-students/policies-regulations/transfers` |
+| Science | `uwaterloo.ca/science-undergraduate-office/modifying-your-program/transferring-science` |
+
+Engineering is unlike the other two in a way that matters more than any of its numbers: **an
+accepted transfer restarts in 1A**, and 1A runs only in September. That is modelled as a condition
+a student has to acknowledge, not a footnote, because it makes an Engineering transfer
+incomparable with a Math or Science one.
+
+### Program declaration rules
+
+Eleven Faculty of Mathematics programs, each transcribed from its own calendar page:
+
+Computer Science · Data Science · Actuarial Science · Combinatorics and Optimization · Statistics ·
+Applied Mathematics · Pure Mathematics · Computational Mathematics · Mathematical Economics ·
+Financial Analysis and Risk Management · Computing and Financial Management
+
+Plus **Software Engineering** under Engineering.
+
+**Most Math majors have no declaration requirements at all.** CO, Statistics, Pure Mathematics,
+Applied Mathematics and Computational Mathematics state only minimum averages, and several calendar
+pages carry no "Declaration Requirements" section whatsoever. Only the limited-enrolment plans -
+Computer Science, Data Science, Actuarial Science, FARM - gate on anything more. Those rules look
+sparse because the requirements are sparse, and their notes say so rather than padding the list.
+
+Two programs admit directly rather than through their faculty, so requiring the faculty transfer
+first would invent a step that does not exist: **CFM** accepts applications from any Waterloo
+program, and **Software Engineering** takes 1B/2A/2B entry straight to the SE Director, which is
+also how it avoids Engineering's 1A restart.
 
 Every curated file records the URL it was transcribed from and the date it was retrieved, so a
 stale rule can be re-checked.
@@ -66,6 +98,24 @@ Two caveats worth knowing about the API:
 The sync therefore drops course descriptions, which nothing renders and which accounted for 3.6MB
 of a 4.9MB file; the catalog is 1.3MB raw and about 165KB gzipped. If descriptions are ever needed
 in the UI, serve them from a separate lazily-fetched file rather than widening this one.
+
+## Course availability
+
+Every recommended course - in the term-by-term plan and in the "choose yourself" shortlists -
+carries a **check sections** link into Waterloo's Schedule of Classes, filtered to that course in
+the term the plan puts it in.
+
+The catalog sync only records which *seasons* a course has historically run in. That is enough to
+order a plan but says nothing about whether a section exists next term or still has seats, which
+is what the schedule shows.
+
+The site's search is a POST form, but its CGI also accepts GET, so this is a plain link: no
+server, no API key, no scraping, and the app stays static. Verified 2026-08-22.
+
+The schedule publishes a **rolling window** of roughly two terms ahead. A term beyond it returns
+"your query had no matches", which reads as *"this course is not offered"* when it really means
+*"the timetable is not out yet"* - so links past that window are labelled **sections (not posted
+yet)** instead.
 
 ## Privacy
 
@@ -84,6 +134,9 @@ which is what makes it testable:
 - `prereqs.ts` - parser for UW's free-text prerequisite strings
 - `planner.ts` - term-by-term ordering of the courses needed to become eligible
 - `transcript.ts` - parses a Quest transcript into course attempts
+- `equivalence.ts` - which courses may stand in for which, and on what evidence
+- `terms.ts` - term codes, seasons, and the calendar-year list
+- `schedule.ts` - deep links into the Schedule of Classes
 
 Three design decisions carry most of the weight:
 
@@ -186,7 +239,11 @@ apply only *after* admission and never block an application, so they are not mod
 ## Not yet built
 
 - OCR for transcripts that are photos or flatbed scans rather than text PDFs
-- Declaration rules for majors other than Computer Science
-- Transfer rules for Engineering, Arts, Environment, and Health
+- The remaining Faculty of Mathematics programs: Mathematical Physics, Mathematical Studies,
+  Mathematical Optimization, Mathematical Finance, Mathematics/Business Administration,
+  Mathematics/CPA, and Mathematics and Teaching
+- Program-level rules for Engineering plans other than Software Engineering, and for any Science
+  program - both faculties currently offer the faculty transfer only
+- Transfer rules for Arts, Environment, and Health
 - Checking enrolment restrictions ("Honours Math students only") against the student's current
   program, which would turn most "check yourself" notes into real answers
