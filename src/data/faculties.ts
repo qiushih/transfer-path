@@ -1,5 +1,7 @@
 import type { TransferRule } from "@/domain/eligibility";
+import { artsInternalTransfer } from "./rules/arts-internal-transfer";
 import { cfmInternalTransfer } from "./rules/cfm-internal-transfer";
+import { environmentInternalTransfer, ersTransfer } from "./rules/environment-internal-transfer";
 import { engineeringInternalTransfer } from "./rules/engineering-internal-transfer";
 import { softwareEngineeringTransfer } from "./rules/se-internal-transfer";
 import { csDeclaration } from "./rules/cs-declaration";
@@ -149,6 +151,41 @@ export const FACULTIES: FacultyTarget[] = [
         name: "Not decided yet",
         requiresFacultyTransfer: true,
         note: "Engineering programs other than Software Engineering are entered through the faculty transfer process above, which starts every student in 1A.",
+      },
+    ],
+  },
+  {
+    id: "arts",
+    name: "Faculty of Arts",
+    transferRule: artsInternalTransfer,
+    programs: [
+      {
+        id: "undecided",
+        name: "Not decided yet",
+        requiresFacultyTransfer: true,
+        note: "Majors set their own bar on top of the faculty transfer: 70% major average for an Honours major, 65% for a general major.",
+      },
+    ],
+  },
+  {
+    id: "environment",
+    name: "Faculty of Environment",
+    transferRule: environmentInternalTransfer,
+    programs: [
+      {
+        id: "ers",
+        name: "Environment, Resources and Sustainability (ERS)",
+        declarationRule: ersTransfer,
+        // The faculty publishes no criteria of its own, so the school's rule
+        // is the whole requirement rather than an extra layer on top of one.
+        requiresFacultyTransfer: false,
+        note: "ERS sets its own bar and admits directly. The Faculty of Environment publishes no faculty-wide transfer criteria.",
+      },
+      {
+        id: "undecided",
+        name: "Not decided yet",
+        requiresFacultyTransfer: true,
+        note: "Geography and Environmental Management, Planning, and Environment, Enterprise and Development each publish their own requirements; contact the school's academic advisor.",
       },
     ],
   },

@@ -56,9 +56,9 @@ function Planner() {
 
   return (
     <Shell>
-      <TranscriptImport profile={profile} onChange={setProfile} />
-
       <ProfilePanel profile={profile} onChange={setProfile} />
+
+      <TranscriptImport profile={profile} onChange={setProfile} />
 
       <ModeTabs mode={mode} onChange={setMode} />
 

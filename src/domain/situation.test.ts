@@ -422,3 +422,93 @@ describe("an unknown current program is not treated as 'not excluded'", () => {
     expect(row?.status).toBe("met");
   });
 });
+
+describe("Faculty of Arts transfer", () => {
+  const arts = findFaculty("arts");
+  const rule = arts.transferRule;
+  const row = (p: AcademicProfile, match: RegExp) =>
+    checkEligibility(rule, p).evaluation.children?.find((c) => match.test(c.requirement));
+
+  const graded = (subject: string, catalogNumber: string, value: number) => ({
+    course: { subject, catalogNumber },
+    termCode: "1249",
+    units: 0.5,
+    grade: { kind: "numeric" as const, value },
+  });
+
+  it("keeps the Arts average and the overall average as separate gates", () => {
+    // 62% in Arts courses clears the 60% overall bar but misses the 65% Arts one.
+    const profile = profileOf({ attempts: [graded("ENGL", "109", 62), graded("PHIL", "145", 62)] });
+    expect(row(profile, /Cumulative average/)?.status).toBe("met");
+    expect(row(profile, /all Arts courses/)?.status).toBe("unmet");
+  });
+
+  it("passes a student who clears both", () => {
+    const profile = profileOf({
+      attempts: [graded("ENGL", "109", 72), graded("PHIL", "145", 70), graded("HIST", "101", 68)],
+    });
+    expect(row(profile, /all Arts courses/)?.status).toBe("met");
+    expect(row(profile, /Arts course\(s\)/)?.status).toBe("met");
+  });
+
+  it("requires three Arts courses for the qualifying term", () => {
+    const profile = profileOf({ attempts: [graded("ENGL", "109", 80)] });
+    expect(row(profile, /Arts course\(s\)/)?.status).toBe("unmet");
+  });
+
+  it("does not let a non-Arts course count toward the Arts average", () => {
+    const profile = profileOf({ attempts: [graded("MATH", "137", 95)] });
+    // No Arts courses on file, so the Arts average cannot be computed.
+    expect(row(profile, /all Arts courses/)?.status).toBe("unknown");
+  });
+
+  it("blocks a student who has failed a course in the qualifying term", () => {
+    const profile = profileOf({
+      attempts: [
+        graded("ENGL", "109", 80),
+        { ...graded("PHIL", "145", 30), grade: { kind: "symbol" as const, value: "NCR" } },
+      ],
+    });
+    expect(row(profile, /failed course/)?.status).toBe("unmet");
+  });
+});
+
+describe("Faculty of Environment defers to its schools", () => {
+  const env = findFaculty("environment");
+
+  it("states plainly that the faculty publishes no criteria of its own", () => {
+    const report = checkEligibility(env.transferRule, profileOf());
+    // Nothing is checkable at faculty level, so it can only report unknown.
+    expect(report.overall).toBe("unknown");
+    expect(JSON.stringify(report.evaluation)).toContain("school");
+  });
+
+  it("invents no faculty-level average", () => {
+    const text = JSON.stringify(env.transferRule.condition);
+    expect(text).not.toContain("cumulativeAverage");
+    expect(text).not.toContain("filteredAverage");
+  });
+
+  it("checks the real ERS bar of 70% instead", () => {
+    const ers = findProgram(env, "ers");
+    const rule = ers.declarationRule!;
+    const graded = (v: number) => ({
+      course: { subject: "ENVS", catalogNumber: "195" },
+      termCode: "1249",
+      units: 0.5,
+      grade: { kind: "numeric" as const, value: v },
+    });
+
+    const strong = checkEligibility(rule, profileOf({ attempts: [graded(75)] }));
+    const weak = checkEligibility(rule, profileOf({ attempts: [graded(65)] }));
+
+    expect(strong.evaluation.children?.[0].status).toBe("met");
+    expect(weak.evaluation.children?.[0].status).toBe("unmet");
+  });
+
+  it("does not stack a faculty transfer on top of the ERS rule", () => {
+    // The faculty has no criteria, so ERS is the whole requirement.
+    const ers = findProgram(env, "ers");
+    expect(rulesFor(env, ers).map((r) => r.id)).toEqual(["ers-transfer"]);
+  });
+});
