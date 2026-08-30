@@ -57,8 +57,17 @@ carries a `transferRule`; each program under it carries an optional `declaration
 | Mathematics | `uwaterloo.ca/math/internal-transfer` |
 | Engineering | `uwaterloo.ca/engineering/undergraduate-students/policies-regulations/transfers` |
 | Science | `uwaterloo.ca/science-undergraduate-office/modifying-your-program/transferring-science` |
+| Arts | `uwaterloo.ca/arts/undergraduate/faculty-transfer-arts` |
+| Environment | `uwaterloo.ca/environment/undergraduate/current-students/transfers` |
 
-Engineering is unlike the other two in a way that matters more than any of its numbers: **an
+Two faculties break the pattern. **Arts** states three averages that are not interchangeable - a
+qualifying-term average, an average over every Arts course ever taken, and an overall cumulative
+average - so a student can clear the overall bar and still fail the Arts-only one. **Environment**
+publishes no faculty-wide criteria at all: its page routes students to one of four schools, so its
+rule deliberately checks nothing and says so, rather than inventing a plausible cutoff that would
+leave a student thinking they were on track.
+
+Engineering is unlike the others in a way that matters more than any of its numbers: **an
 accepted transfer restarts in 1A**, and 1A runs only in September. That is modelled as a condition
 a student has to acknowledge, not a footnote, because it makes an Engineering transfer
 incomparable with a Math or Science one.
@@ -71,7 +80,8 @@ Computer Science · Data Science · Actuarial Science · Combinatorics and Optim
 Applied Mathematics · Pure Mathematics · Computational Mathematics · Mathematical Economics ·
 Financial Analysis and Risk Management · Computing and Financial Management
 
-Plus **Software Engineering** under Engineering.
+Plus **Software Engineering** under Engineering, and **Environment, Resources and Sustainability**
+under Environment - the one Environment school publishing a concrete bar (70% overall).
 
 **Most Math majors have no declaration requirements at all.** CO, Statistics, Pure Mathematics,
 Applied Mathematics and Computational Mathematics state only minimum averages, and several calendar
@@ -244,6 +254,9 @@ apply only *after* admission and never block an application, so they are not mod
   Mathematics/CPA, and Mathematics and Teaching
 - Program-level rules for Engineering plans other than Software Engineering, and for any Science
   program - both faculties currently offer the faculty transfer only
-- Transfer rules for Arts, Environment, and Health
+- Transfer rules for Health
+- The other three Environment schools - Geography and Environmental Management, Planning, and
+  Environment, Enterprise and Development - which publish requirements on their own pages
+- Arts major-level bars (70% major average for Honours, 65% for general)
 - Checking enrolment restrictions ("Honours Math students only") against the student's current
   program, which would turn most "check yourself" notes into real answers
