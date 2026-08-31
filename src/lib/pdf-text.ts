@@ -18,14 +18,46 @@ export type PdfExtraction = {
   imageOnly: boolean;
 };
 
-export async function extractPdfText(file: File): Promise<PdfExtraction> {
-  const pdfjs = await import("pdfjs-dist");
+/** Turbopack and webpack both resolve this to a bundled asset URL. */
+function workerUrl(): string {
+  return new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+}
 
-  // Turbopack and webpack both resolve this to a bundled asset URL.
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString();
+/**
+ * Loads pdf.js once and remembers the promise.
+ *
+ * Shared by `extractPdfText` and `warmPdfEngine` so that warming the engine
+ * ahead of time and using it later hit the same module instance.
+ */
+let enginePromise: Promise<typeof import("pdfjs-dist")> | null = null;
+
+function loadEngine(): Promise<typeof import("pdfjs-dist")> {
+  enginePromise ??= import("pdfjs-dist").then((pdfjs) => {
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl();
+    return pdfjs;
+  });
+  return enginePromise;
+}
+
+/**
+ * Downloads the PDF engine before anyone asks for it, so that importing a
+ * transcript still works after the network is gone.
+ *
+ * This exists because warming the wrapper module is not enough: pdf.js is a
+ * ~440KB chunk behind its own dynamic import, and the worker is a separate
+ * asset again. A student who loaded the app online and only *then* went offline
+ * would otherwise find PDF import broken, which is precisely the case offline
+ * support is meant to cover.
+ */
+export async function warmPdfEngine(): Promise<void> {
+  await loadEngine();
+  // Pull the worker through the network layer too, so the service worker
+  // caches it. pdf.js only requests this when a document is actually opened.
+  await fetch(workerUrl(), { cache: "force-cache" }).catch(() => {});
+}
+
+export async function extractPdfText(file: File): Promise<PdfExtraction> {
+  const pdfjs = await loadEngine();
 
   const data = new Uint8Array(await file.arrayBuffer());
   const loadingTask = pdfjs.getDocument({ data });

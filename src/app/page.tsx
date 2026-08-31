@@ -19,6 +19,7 @@ import { ContactBox } from "@/components/ContactBox";
 import { EligibilityPanel } from "@/components/EligibilityPanel";
 import { FacultyStep, ProgramStep } from "@/components/GuidedSetup";
 import { ModeTabs, type AppMode } from "@/components/ModeTabs";
+import { OfflineReady } from "@/components/OfflineReady";
 import { PlannerPanel } from "@/components/PlannerPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { TranscriptImport } from "@/components/TranscriptImport";
@@ -56,6 +57,8 @@ function Planner() {
 
   return (
     <Shell>
+      <OfflineReady />
+
       <ProfilePanel profile={profile} onChange={setProfile} />
 
       <TranscriptImport profile={profile} onChange={setProfile} />
