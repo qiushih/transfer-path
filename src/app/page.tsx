@@ -271,6 +271,19 @@ function Shell({ children }: { children: React.ReactNode }) {
           consult your academic advisor before trusting this information. Requirements change, and
           some conditions here cannot be checked automatically.
         </p>
+
+        {/*
+          Stated up front rather than only next to the upload box: "where does
+          my transcript go" is the first thing anyone asks of a tool that wants
+          their academic record, and the answer here is genuinely "nowhere".
+        */}
+        <p
+          role="note"
+          className="mt-2 rounded-lg border border-emerald-600/40 bg-emerald-600/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100"
+        >
+          <strong className="font-semibold">Processed locally on your device.</strong> Your
+          transcript is never uploaded to our servers.
+        </p>
       </header>
       {children}
     </main>
