@@ -8,6 +8,9 @@ student must do after being admitted - upper-year courses, elective bands, total
 co-op and PD - is **not** modelled, because those requirements never block an application and
 listing them buries the handful of things that do.
 
+Source: <https://github.com/qiushih/transfer-path> - if it is useful, a star helps other Waterloo
+students find it.
+
 > **Unofficial - for quick reference only.** Please consult your academic advisor before trusting
 > this information. Requirements change, and some conditions cannot be checked automatically.
 
