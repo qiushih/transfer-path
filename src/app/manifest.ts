@@ -10,8 +10,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "UWaterloo Transfer & Major Planner",
-    short_name: "UW Planner",
+    name: "Waterloo Pathways - Internal Transfer & Major Declaration Planner",
+    short_name: "Waterloo Pathways",
     description:
       "Check what you still need to transfer into a University of Waterloo faculty or declare a major. Works offline; your transcript never leaves your device.",
     start_url: "/",

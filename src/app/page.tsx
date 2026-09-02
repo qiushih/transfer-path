@@ -264,10 +264,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-10">
       <header>
-        <h1 className="text-2xl font-bold">UWaterloo Transfer &amp; Major Planner</h1>
-        <p className="mt-1 text-sm opacity-70">
-          Find out what you still need before you can transfer into a faculty or declare a major at
-          Waterloo, and the earliest term you could be eligible.
+        <h1 className="text-2xl font-bold">Waterloo Pathways</h1>
+        <p className="mt-1 text-base font-medium opacity-80">
+          Internal Transfer &amp; Major Declaration Planner
+        </p>
+        <p className="mt-1 text-sm opacity-60">
+          Find out what you still need before you can transfer into a faculty or declare a major,
+          and the earliest term you could be eligible.
         </p>
 
         {/*

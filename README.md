@@ -1,4 +1,6 @@
-# UWaterloo Transfer & Major Planner
+# Waterloo Pathways
+
+**Internal Transfer & Major Declaration Planner**
 
 Answers one question for a University of Waterloo student: **what am I missing before I can apply
 to transfer or declare my target major, and what is the earliest path to becoming eligible?**

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UWaterloo Transfer & Major Planner",
+  title: "Waterloo Pathways - Internal Transfer & Major Declaration Planner",
   description:
     "Unofficial quick-reference tool: check what you still need to transfer into a University of Waterloo faculty or declare a major, and the earliest term you could be eligible. Confirm with an academic advisor.",
 };
