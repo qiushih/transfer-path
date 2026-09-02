@@ -18,8 +18,8 @@ import type { AcademicProfile } from "@/domain/types";
 import { ContactBox } from "@/components/ContactBox";
 import { EligibilityPanel } from "@/components/EligibilityPanel";
 import { FacultyStep, ProgramStep } from "@/components/GuidedSetup";
-import { ModeTabs, type AppMode } from "@/components/ModeTabs";
 import { OfflineReady } from "@/components/OfflineReady";
+import { Sidebar, type View } from "@/components/Sidebar";
 import { PlannerPanel } from "@/components/PlannerPanel";
 import { ProfilePanel } from "@/components/ProfilePanel";
 import { TranscriptImport } from "@/components/TranscriptImport";
@@ -42,7 +42,7 @@ export default function Home() {
 
 function Planner() {
   const [profile, setProfile] = useState<AcademicProfile>(loadProfile);
-  const [mode, setMode] = useState<AppMode>("transfer");
+  const [view, setView] = useState<View>("profile");
   const [facultyId, setFacultyId] = useState("math");
   const [transferProgramId, setTransferProgramId] = useState("cs");
   const [declareProgramId, setDeclareProgramId] = useState("cs");
@@ -59,35 +59,45 @@ function Planner() {
     <Shell>
       <OfflineReady />
 
-      <ProfilePanel profile={profile} onChange={setProfile} />
+      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+        <Sidebar view={view} onChange={setView} />
 
-      <TranscriptImport profile={profile} onChange={setProfile} />
+        {/* `min-w-0` stops long requirement text from forcing the row wider. */}
+        <div className="min-w-0 flex-1 space-y-6">
+          {view === "profile" && (
+            <>
+              <ProfilePanel profile={profile} onChange={setProfile} />
+              <TranscriptImport profile={profile} onChange={setProfile} />
+            </>
+          )}
 
-      <ModeTabs mode={mode} onChange={setMode} />
+          {view === "transfer" && (
+            <TransferDashboard
+              profile={profile}
+              equivalence={equivalence}
+              facultyId={facultyId}
+              programId={transferProgramId}
+              onFacultyChange={(id) => {
+                setFacultyId(id);
+                // The old program belonged to the old faculty.
+                setTransferProgramId(findFaculty(id).programs[0].id);
+              }}
+              onProgramChange={setTransferProgramId}
+            />
+          )}
 
-      {mode === "transfer" ? (
-        <TransferDashboard
-          profile={profile}
-          equivalence={equivalence}
-          facultyId={facultyId}
-          programId={transferProgramId}
-          onFacultyChange={(id) => {
-            setFacultyId(id);
-            // The old program belonged to the old faculty.
-            setTransferProgramId(findFaculty(id).programs[0].id);
-          }}
-          onProgramChange={setTransferProgramId}
-        />
-      ) : (
-        <DeclareDashboard
-          profile={profile}
-          equivalence={equivalence}
-          programId={declareProgramId}
-          onProgramChange={setDeclareProgramId}
-        />
-      )}
+          {view === "declare" && (
+            <DeclareDashboard
+              profile={profile}
+              equivalence={equivalence}
+              programId={declareProgramId}
+              onProgramChange={setDeclareProgramId}
+            />
+          )}
 
-      <ContactBox />
+          <ContactBox />
+        </div>
+      </div>
 
       <footer className="flex items-center justify-between border-t border-black/10 pt-4 text-xs opacity-60 dark:border-white/15">
         <span>Unofficial - for quick reference only. Confirm with your academic advisor.</span>
@@ -252,7 +262,7 @@ function DeclareDashboard({
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
+    <main className="mx-auto max-w-5xl space-y-6 px-4 py-10">
       <header>
         <h1 className="text-2xl font-bold">UWaterloo Transfer &amp; Major Planner</h1>
         <p className="mt-1 text-sm opacity-70">
