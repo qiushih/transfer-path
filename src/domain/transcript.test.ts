@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { importableRows, mergeAttempts, parseTranscript, toAttempt } from "./transcript";
+import { editRow, importableRows, mergeAttempts, parseTranscript, toAttempt } from "./transcript";
 import { courseKey } from "./grades";
 import type { CourseAttempt } from "./types";
 
@@ -168,5 +168,58 @@ describe("merging an import into an existing profile", () => {
     expect(attempts).toEqual(existing);
     expect(added).toBe(0);
     expect(replaced).toBe(0);
+  });
+});
+
+describe("correcting a parsed row by hand", () => {
+  const original = parseTranscript("Fall 2024\nMATH 137 Calculus  0.50  0.50  82").rows[0];
+
+  it("applies a corrected subject and number", () => {
+    const fixed = editRow(original, { subject: "cs", catalogNumber: "136l" });
+    expect(fixed.course).toEqual({ subject: "CS", catalogNumber: "136L" });
+  });
+
+  it("re-parses a corrected grade rather than storing raw text", () => {
+    expect(editRow(original, { gradeText: "91" }).grade).toEqual({ kind: "numeric", value: 91 });
+    expect(editRow(original, { gradeText: "CR" }).grade).toEqual({ kind: "symbol", value: "CR" });
+  });
+
+  it("rescues a row the parser could not read", () => {
+    // No grade on the line, so the parse marked it unusable.
+    const broken = parseTranscript("Fall 2024\nMATH 137 Calculus 1 for Honours Mathematics").rows[0];
+    expect(broken.grade).toBeNull();
+    expect(importableRows([broken])).toEqual([]);
+
+    const fixed = editRow(broken, { gradeText: "78" });
+    expect(fixed.confidence).toBe("high");
+    expect(importableRows([fixed])).toHaveLength(1);
+  });
+
+  it("rejects an edit that is still not a grade", () => {
+    const fixed = editRow(original, { gradeText: "banana" });
+    expect(fixed.grade).toBeNull();
+    expect(fixed.confidence).toBe("low");
+    expect(importableRows([fixed])).toEqual([]);
+  });
+
+  it("refuses an out-of-range percentage typed by hand", () => {
+    expect(editRow(original, { gradeText: "820" }).grade).toBeNull();
+  });
+
+  it("treats a cleared grade as missing rather than zero", () => {
+    const cleared = editRow(original, { gradeText: "" });
+    expect(cleared.grade).toBeNull();
+    expect(cleared.issues.join(" ")).toContain("no grade");
+  });
+
+  it("marks the row as edited so the UI can say so", () => {
+    expect(editRow(original, { gradeText: "91" }).edited).toBe(true);
+  });
+
+  it("carries the correction through to the imported attempt", () => {
+    const fixed = editRow(original, { subject: "STAT", catalogNumber: "230", gradeText: "88" });
+    const attempt = toAttempt(fixed);
+    expect(attempt?.course).toEqual({ subject: "STAT", catalogNumber: "230" });
+    expect(attempt?.grade).toEqual({ kind: "numeric", value: 88 });
   });
 });

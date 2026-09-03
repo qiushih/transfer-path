@@ -27,6 +27,8 @@ export type ParsedRow = {
   /** Low confidence rows are still shown, but not pre-selected for import. */
   confidence: "high" | "low";
   issues: string[];
+  /** True once the student has corrected this row by hand. */
+  edited?: boolean;
 };
 
 export type ParsedTranscript = {
@@ -62,7 +64,15 @@ const UNITS = /\b\d+\.\d{2}\b/g;
 
 const WORK_TERM = /\b(co-?op\s+work\s+term|work\s+term|WKRPT|work\s+report)\b/i;
 
-function parseGrade(text: string): { grade: Grade | null; issues: string[] } {
+/**
+ * Reads a grade the way the transcript writes it: a percentage, or one of UW's
+ * non-numeric outcomes.
+ *
+ * Exported because the import preview lets a student correct a misread grade by
+ * hand, and that edit must be interpreted exactly like a parsed one. A second
+ * implementation in the UI would be free to drift.
+ */
+export function parseGrade(text: string): { grade: Grade | null; issues: string[] } {
   const token = text.trim().split(/\s+/)[0] ?? "";
   if (!token) return { grade: null, issues: ["no grade on this line"] };
 
@@ -192,6 +202,53 @@ export function parseTranscript(text: string): ParsedTranscript {
 /** Rows that carry enough information to become a course attempt. */
 export function importableRows(rows: ParsedRow[]): ParsedRow[] {
   return rows.filter((r) => r.grade !== null && r.termCode !== null);
+}
+
+/**
+ * Applies a hand edit to a parsed row, re-deriving whether it is usable.
+ *
+ * A corrected row must be able to *become* importable: the whole point of
+ * editing is to rescue a line the parser misread, so the issues and confidence
+ * are recalculated rather than carried over from the original parse.
+ */
+export function editRow(
+  row: ParsedRow,
+  edit: { subject?: string; catalogNumber?: string; gradeText?: string },
+): ParsedRow {
+  const subject = (edit.subject ?? row.course.subject).trim().toUpperCase();
+  const catalogNumber = (edit.catalogNumber ?? row.course.catalogNumber).trim().toUpperCase();
+
+  let grade = row.grade;
+  const issues: string[] = [];
+
+  if (edit.gradeText !== undefined) {
+    const text = edit.gradeText.trim();
+    if (text === "") {
+      grade = null;
+      issues.push("no grade entered");
+    } else {
+      const parsed = parseGrade(text);
+      grade = parsed.grade;
+      issues.push(...parsed.issues);
+    }
+  } else if (!row.grade) {
+    issues.push("no grade on this line");
+  }
+
+  if (!subject) issues.push("no subject");
+  if (!catalogNumber) issues.push("no course number");
+  if (!row.termCode) issues.push("no term heading appeared before this course");
+
+  return {
+    ...row,
+    course: { subject, catalogNumber },
+    grade,
+    issues,
+    // An edited row is the student's own claim, so a clean one is high
+    // confidence even if the original parse was not.
+    confidence: issues.length === 0 ? "high" : "low",
+    edited: true,
+  };
 }
 
 export function toAttempt(row: ParsedRow): CourseAttempt | null {

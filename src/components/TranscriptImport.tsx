@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { courseKey } from "@/domain/grades";
 import {
+  editRow,
   importableRows,
   mergeAttempts,
   parseTranscript,
@@ -14,10 +14,14 @@ import { describeTerm } from "@/domain/terms";
 import type { AcademicProfile } from "@/domain/types";
 import { Section, Warning, inputClass } from "./ui";
 
-function describeGrade(row: ParsedRow): string {
-  if (!row.grade) return "-";
-  return row.grade.kind === "numeric" ? `${row.grade.value}%` : row.grade.value;
+/** The editable text for a grade: the number or symbol, with no "%" to retype. */
+function gradeText(row: ParsedRow): string {
+  if (!row.grade) return "";
+  return row.grade.kind === "numeric" ? String(row.grade.value) : row.grade.value;
 }
+
+const cellClass =
+  "rounded border border-black/20 bg-transparent px-1 py-0.5 text-xs dark:border-white/25";
 
 export function TranscriptImport({
   profile,
@@ -28,15 +32,30 @@ export function TranscriptImport({
 }) {
   const [text, setText] = useState("");
   const [parsed, setParsed] = useState<ParsedTranscript | null>(null);
+  /**
+   * The rows the student sees and edits. Kept separate from `parsed` so the
+   * original parse stays available for the warnings and the unreadable list,
+   * and so a correction is never confused with something the parser produced.
+   */
+  const [rows, setRows] = useState<ParsedRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const rowId = (row: ParsedRow, index: number) => `${index}:${courseKey(row.course)}`;
+  /**
+   * Position only. Keying on the course code would change identity the moment a
+   * student corrected a subject or number, silently dropping their selection.
+   */
+  const rowId = (_row: ParsedRow, index: number) => `row-${index}`;
+
+  function updateRow(index: number, edit: Parameters<typeof editRow>[1]) {
+    setRows((current) => current.map((row, i) => (i === index ? editRow(row, edit) : row)));
+  }
 
   function analyse(source: string) {
     const result = parseTranscript(source);
     setParsed(result);
+    setRows(result.rows);
     // Pre-select only rows that parsed cleanly. A low-confidence row has to be
     // ticked deliberately, so a misread grade cannot slip into the profile.
     setSelected(
@@ -80,7 +99,7 @@ export function TranscriptImport({
   function applyImport() {
     if (!parsed) return;
 
-    const chosen = parsed.rows.filter((row, i) => selected.has(rowId(row, i)));
+    const chosen = rows.filter((row, i) => selected.has(rowId(row, i)));
     const attempts = importableRows(chosen)
       .map(toAttempt)
       .filter((a): a is NonNullable<typeof a> => a !== null);
@@ -96,7 +115,7 @@ export function TranscriptImport({
     setStatus(`Imported ${added} course(s), updated ${replaced}.`);
   }
 
-  const importable = parsed ? importableRows(parsed.rows).length : 0;
+  const importable = importableRows(rows).length;
 
   return (
     <Section
@@ -156,11 +175,12 @@ export function TranscriptImport({
         <Warning key={warning}>{warning}</Warning>
       ))}
 
-      {parsed && parsed.rows.length > 0 && (
+      {parsed && rows.length > 0 && (
         <div className="mt-3">
           <p className="mb-1 text-xs opacity-70">
-            Found {parsed.rows.length} course row(s), {importable} ready to import. Check each grade
-            against your transcript before importing.
+            Found {rows.length} course row(s), {importable} ready to import. Anything the parser
+            got wrong can be corrected here - edit the subject, number, or grade and the row
+            re-checks itself.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -175,14 +195,15 @@ export function TranscriptImport({
                 </tr>
               </thead>
               <tbody>
-                {parsed.rows.map((row, i) => {
+                {rows.map((row, i) => {
                   const id = rowId(row, i);
                   const usable = row.grade !== null && row.termCode !== null;
                   return (
                     <tr key={id} className="border-t border-black/5 dark:border-white/10">
-                      <td className="py-1 pr-2">
+                      <td className="py-1 pr-2 align-top">
                         <input
                           type="checkbox"
+                          className="mt-1"
                           disabled={!usable}
                           checked={selected.has(id)}
                           onChange={(e) => {
@@ -193,13 +214,41 @@ export function TranscriptImport({
                           }}
                         />
                       </td>
-                      <td className="py-1 pr-2 font-mono">{courseKey(row.course)}</td>
-                      <td className="py-1 pr-2">
+                      <td className="py-1 pr-2 align-top">
+                        <div className="flex gap-1">
+                          <input
+                            aria-label={`Subject for row ${i + 1}`}
+                            className={`${cellClass} w-16 uppercase`}
+                            value={row.course.subject}
+                            onChange={(e) => updateRow(i, { subject: e.target.value })}
+                          />
+                          <input
+                            aria-label={`Course number for row ${i + 1}`}
+                            className={`${cellClass} w-14 uppercase`}
+                            value={row.course.catalogNumber}
+                            onChange={(e) => updateRow(i, { catalogNumber: e.target.value })}
+                          />
+                        </div>
+                      </td>
+                      <td className="py-1 pr-2 align-top">
                         {row.termCode ? describeTerm(row.termCode) : "-"}
                       </td>
-                      <td className="py-1 pr-2">{row.units.toFixed(2)}</td>
-                      <td className="py-1 pr-2">{describeGrade(row)}</td>
-                      <td className="py-1 opacity-70">{row.issues.join("; ")}</td>
+                      <td className="py-1 pr-2 align-top">{row.units.toFixed(2)}</td>
+                      <td className="py-1 pr-2 align-top">
+                        <input
+                          aria-label={`Grade for row ${i + 1}`}
+                          className={`${cellClass} w-16`}
+                          placeholder="82 or CR"
+                          value={gradeText(row)}
+                          onChange={(e) => updateRow(i, { gradeText: e.target.value })}
+                        />
+                      </td>
+                      <td className="py-1 align-top text-xs opacity-70">
+                        {row.issues.join("; ")}
+                        {row.edited && row.issues.length === 0 && (
+                          <span className="text-emerald-700 dark:text-emerald-300">edited</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
